@@ -1,0 +1,162 @@
+#! /usr/bin/python
+# webscraping to get tickers from yahoo webpage
+
+import requests
+import json
+import time
+from timeit import default_timer as timer
+import sys
+import gc
+# change directory
+import os.path
+import glob
+import pandas
+import numpy
+
+start_time = time.time()
+start = timer()
+#### create csv folder to save dataframe in here
+filename_csv=('C:/Users/USER/Documents/python_code/S_Stocks_T_Ticker_Symbols_O_output_tickers_aussie.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+rawdatadonotdelete_name=('RAWDATA_DONOTDELETE')
+reportdatadonotdelete_name=('REPORT_DONOTDELETE')
+csv_path, csv_file_ending = os.path.split(filename_csv)
+csv_file, csv_ending = csv_file_ending.split('.')
+csv_extension=csv_file+'.'+csv_ending
+joined_path_csv_namesymbol=os.path.join(csv_path,csv_extension)
+
+# Modify BASE_URL accordingly
+BASE_URL = "https://finance.yahoo.com/screener/unsaved/8ae89ff5-5002-43b8-ad4a-a2b3ece9860c?count=COUNT&dependentField=sector&dependentValues=&offset=OFFSET" # us market cap intraday small cap
+#https://finance.yahoo.com/screener/unsaved/53a0acf8-e521-4c59-bd41-a964f82d7655?dependentField=sector&dependentValues=
+#https://finance.yahoo.com/screener/unsaved/b5220892-2b86-4a5f-9e0b-df1aae2631f9?dependentField=sector&dependentValues=&offset=0&count=100
+#https://finance.yahoo.com/screener/new
+#https://finance.yahoo.com/cryptocurrencies?offset=0&count=100
+#https://finance.yahoo.com/mutualfunds?offset=0&count=100
+#https://finance.yahoo.com/etfs?offset=0&count=100
+#https://finance.yahoo.com/commodities
+#https://finance.yahoo.com/world-indices
+#https://finance.yahoo.com/currencies
+
+#yahoo_pages=int(168150/100) # world stock -> total stock results/100 listed items per page = number of pages
+#print(yahoo_pages)
+na_variable=('na') # used for find indicies
+cnt = 100 # list of stock symbols per page
+offset = 0 # changes yahoo page
+length_of_offset_string=[] 
+previous_length_of_offset_string=1 # yahoo page page zero has a default offset of zero -> len(str(0))=1. therefore 'previous_length_of_offset_string' is 1 for 'BASE_URL'
+flag = 1
+temp  = 10
+name_to_symbol = []
+total = 0 # total number of stock symbols downloaded
+counter=0
+diff_total=0
+random_number=100 # whenever list reaches 5000 tickers save to csv.file
+max_tickers_in_list=100 # whenever list reaches 5000 tickers save to csv.file
+counter_end_while_loop=0
+
+while flag > 0:
+#for x in range(yahoo_pages):
+    
+    s=[]
+    response=[]
+    jsonArrayStart=[]
+    jsonArrayEnd_start=[]
+    string_from_arrayend_start=[]
+    jsonArrayEnd_new_indx_end=[]
+    jsonArrayEnd=[]
+    jsonArrayString=[]
+    jsonArray=[]
+    start_replace_offset_value_idx=[]
+    end_replace_offset_value_idx=[]
+    #replace offset value to click to next page in yahoo -> need to make sure url contains 'offset=' and 'count=', otherwise change naming convention
+    url=BASE_URL.replace('OFFSET',str(offset)) 
+    #replace count value to make sure yahoo page always listed as 100 as per default ->-> need to make sure url contains 'offset=' and 'count=', otherwise change naming convention
+    url=url.replace('COUNT',str(cnt)) 
+    # increment offset -> add one to offset which mimics to select a next page in yahoo
+    offset += cnt 
+    response = requests.get(url, headers={'User-Agent': 'Custom'}) # how-to-use-python-requests-to-fake-a-browser-visit-a-k-a-and-generate-user-agent. look at txt.file for more information
+    time.sleep(2)
+    s = str(response.text) # pull strings from webpage (html code)
+    jsonArrayStart = s.find('"results":{"rows"') + 18 # find a specific string within html coding of webpage and add 18 letters to find correct starting point
+#     print(jsonArrayStart)
+    if jsonArrayStart < 18: # it means 'find' wasn't successfull and no stock can be found on this yahoo page
+        print('couldnt download tickers',url)
+        counter_end_while_loop=counter_end_while_loop+1
+        if counter_end_while_loop==5:
+            break
+        continue #go to the next while iteration
+    jsonArrayEnd_start = jsonArrayStart + 1 # add one to starting point to find ']' ending search
+    string_from_arrayend_start=s[jsonArrayEnd_start:] # run string from this idex
+    jsonArrayEnd_new_indx_end = string_from_arrayend_start.find(']') # find the next ']'. It only finds one results which is very convinient
+    jsonArrayEnd=jsonArrayEnd_new_indx_end+jsonArrayEnd_start # adding both indexes results to the actual index that needs to be found
+    jsonArrayString = s[jsonArrayStart: jsonArrayEnd+1]
+    jsonArray = json.loads(jsonArrayString)
+    for obj in jsonArray: # exctract all details of 100 objects. each object {} stands for one particular stock and it can contain more objects that need to be called they are needed. I am interested in downloading 'trailingPE'
+        if 'longName' in obj:
+            if 'trailingPE' in obj:
+                name_to_symbol.append([obj['symbol'], obj['longName'],obj['trailingPE']['fmt']])
+            else:
+                name_to_symbol.append([obj['symbol'], obj['longName'],na_variable])
+        elif 'shortName' in obj:
+            if 'trailingPE' in obj:
+                name_to_symbol.append([obj['symbol'], obj['shortName'],obj['trailingPE']['fmt']])
+            else:
+                name_to_symbol.append([obj['symbol'], obj['shortName'],na_variable])
+        else:
+            name_to_symbol.append([obj['symbol'], obj['symbol'],obj['symbol']])
+    
+    # it is convenient when code runs in test mode, but should be commented out when code runs in practice
+#     time.sleep(10)
+    # indicator when code starts running -> sometimes kernel doesn't start immediately when pressed running
+    counter=counter+1
+    if counter==1:
+        print('code started to run')
+    # indicates that all stock tickers are downloaded   
+    if len(jsonArray) != cnt: # if length of jsonArray is not equal to 100 as per default then stop initial while loop (it means downloading stock list from yahoo is completed) 
+        flag = 0
+    total += len(jsonArray)
+    # whenever list reaches 5000 tickers save to csv.file
+    if total==max_tickers_in_list:
+        end = timer()
+        print(end - start,total,'total_stock_tickers_downloaded', 'first save')
+        df_csv_namesymbol = pandas.DataFrame(data=name_to_symbol)
+        df_csv_namesymbol.to_csv(joined_path_csv_namesymbol, sep=',',encoding='utf-8',header='true')
+        name_to_symbol=[]
+        df_csv_namesymbol=[]
+    diff_total=total-random_number # maximum difference should not exceed 'max_tickers_in_list'
+    if diff_total==max_tickers_in_list: 
+        end = timer()
+        print(end - start,total,'total_stock_tickers_downloaded')
+        df_csv_namesymbol = pandas.DataFrame(data=name_to_symbol)
+        df_csv_namesymbol.to_csv(joined_path_csv_namesymbol, mode='a', header=False) # it does append to existing csv.file
+        name_to_symbol=[]
+        df_csv_namesymbol=[]
+        random_number=random_number+max_tickers_in_list
+        
+df_csv_namesymbol = pandas.DataFrame(data=name_to_symbol)
+df_csv_namesymbol.to_csv(joined_path_csv_namesymbol, mode='a', header=False) # it does append to existing csv.file
+print(end - start,total,'total_stock_downloaded')
+
+#clear variables
+s=[]
+response=[]
+jsonArrayStart=[]
+jsonArrayEnd_start=[]
+string_from_arrayend_start=[]
+jsonArrayEnd_new_indx_end=[]
+jsonArrayEnd=[]
+jsonArrayString=[]
+jsonArray=[]
+cnt = []
+offset = []
+flag = []
+temp  = []
+name_to_symbol = []
+df_csv_namesymbol=[]
+total = []
+del name_to_symbol
+del s
+gc.collect()
+
+# timer ends
+print("--- %s seconds ---" % (time.time() - start_time))
+print("python code is finished")
