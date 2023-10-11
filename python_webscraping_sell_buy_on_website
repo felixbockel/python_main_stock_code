@@ -1,0 +1,1014 @@
+#! /usr/bin/python
+#select row and press ctrl/ to comment and uncomment
+
+# python webscraping sell and buy on website. use summarized data consisting of historical and price fluctuation and noise data to be able to determine when to buy and sell. use this information to insert that value and price into website automated.
+
+#import python libraries
+import numpy
+import pandas
+
+#download data for today's date automatically
+from datetime import datetime, timedelta
+from datetime import date
+
+# run timer
+import time
+
+import requests
+import json
+import time
+from fake_useragent import UserAgent
+from timeit import default_timer as timer
+from random_user_agent.user_agent import UserAgent
+from random_user_agent.params import SoftwareName, OperatingSystem
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.support import expected_conditions
+from bs4 import BeautifulSoup
+
+import webbrowser
+
+# import sys
+# import gc
+# # change directory
+import os.path
+# import glob
+# # Import the plotting library 
+# import matplotlib.pyplot as plt 
+# from matplotlib.backends.backend_pdf import PdfPages
+# import openpyxl
+# from openpyxl import load_workbook
+# from openpyxl.utils.dataframe import dataframe_to_rows
+
+# #download data for today's date automatically
+# from datetime import datetime, timedelta
+# from datetime import date
+
+# clear all variables
+from IPython import get_ipython 
+
+# 
+import csv
+#
+from re import search
+# presses keys on the keyboard wherever the cursor is sitting (works for browser or file explorer windows)
+import pyautogui
+#load cookies
+import pickle    
+from requests.auth import HTTPBasicAuth
+#round down and up
+from decimal import * 
+# run model
+from Stock_Trading_Model_Meanavg_Savol_Double_Definition import *
+from US_connect_Function1_to_Stock_Trading_Model_Definition import *
+import multiprocessing
+# run timer
+import time
+start_time = time.time()
+
+# Idea: #
+
+# Step 1 #
+# front-end scripting until webpage is open and unsername/password is entered
+
+# Step 2 #
+# enter 2 while-loops. 
+    # -1st while loop keeps script running without ending and checks if first txt.file contains a 1 to do a certain task. Task should check whether list of stock that will be traded on that day are available at website. If yes, put stock to list in website (hot-list).  
+     # -from hotlist i can can download table of stock enterily to monitor a change in stock in 1 task
+     # -end of 1st while loop task make sure that first txt.file contains a 0. ?!
+    # -2nd while loop checks second txt.file for 1. if it contains a 1, then daily trading is available. 
+     # -when daily trading is over, then second txt.file contains 0.
+     # -
+
+# input #
+filename_txt1=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_historical_function1_interaction_1_while_loop.txt');
+filename_txt3=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_historical_function1_interaction_2_while_loop.txt');
+filename_txt2=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/function1_nothing_sell_buy_sell.txt');
+filename_csv=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_name_model_REPORT_DONOTDELETE.csv');
+filename_csv_output_stock_price=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_daily_trading_output_stock_price.csv');
+filename_csv_output_buy_sell_occurence=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_daily_trading_buy_sell_occurence.csv');
+filename_csv_df_current=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_daily_trading_df_current.csv');
+
+
+# URL
+url="https://hellostake.com/au?utm_source=google&utm_medium=cpc&utm_campaign=AU%20-%20Branded%20Search%20-%20ASX%2FWall%20St%20-%20Responsive%20Ad&utm_content&utm_term=stake&gclid=EAIaIQobChMI3PK2ruTH9QIVHJpmAh36TANgEAAYASAAEgIvmPD_BwE&_branch_match_id=1010058768518269947&_branch_referrer=H4sIAAAAAAAAAx3M0QqCMBSA4bfxToWEoGDEqQauKLQk6Ep0jk3a8Qy3Fb195OX%2FXfwmBOe3eU5TZpS15EP3UpkkzP2opzS6NNDQfdMb7GLA1lOcpWKaSFuV%2FAXVMEZk0sklg5qRLZNESzsOjIPoRE39wVxEUZ1Xc2zKTS0e5ckhmGLdwFVzgCfcAbgWb6yO7f7Df2N%2F5BmYAAAA" # start link
+
+# program #
+
+#test
+print('i am still running until you press stop')
+
+# Step 1 #
+
+# handle execptions
+ignored_exceptions=(NoSuchElementException,StaleElementReferenceException,)
+
+#add options to Chrome webpage in clinical mode, when run in test mode just commment '--headless' mode
+options = webdriver.ChromeOptions() # code executes without prompting a window part 1 1 of 3
+#options.add_argument('--headless') # code executes without prompting a window part 2 2 of 3 ####in test mode -> it promts a window -> displays what code is doing
+options.add_argument("--window-size=1440,810")# 1920,1080
+options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_experimental_option('useAutomationExtension', False)
+driver = webdriver.Chrome(options=options)
+
+# open url hompage which open portfolio as per default
+driver.get(url)
+time.sleep(10)
+
+# click on signup button
+select_login = WebDriverWait(driver,5,ignored_exceptions=ignored_exceptions)\
+        .until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "a[id='Hero-SignUp']")))
+select_signup = driver.find_elements(By.CSS_SELECTOR,"a[id='Hero-SignUp']") # it has found the log in button ->[5] is date1 at test results, [6] is date2 at test results
+#select_signup = driver.find_element(By.XPATH,"//*[@id='MenuItem-SignUp']")
+select_signup[0].click()  # Focus input field
+time.sleep(1)
+#login
+select_login = WebDriverWait(driver,5,ignored_exceptions=ignored_exceptions)\
+        .until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "a[href='/sign-in/']")))
+select_login = driver.find_elements(By.CSS_SELECTOR,"a[href='/sign-in/']") # it has found the log in button ->[5] is date1 at test results, [6] is date2 at test results
+select_login[0].click()  # Focus input field
+time.sleep(1)
+#password and username
+elem = WebDriverWait(driver, 20).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, "input[name='username']"))) # positive: it waits until input is ready, negative: output comes as a list. Haven't found a way to convert a list to <class 'selenium.webdriver.remote.webelement.WebElement'>. therefore i need to add another line here
+elem = driver.find_element(By.CSS_SELECTOR,"input[name='username']")# it has found username
+elem.send_keys("test@gmail.com") # add username
+time.sleep(1)
+elem = WebDriverWait(driver, 20).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, "input[name='password']"))) # positive: it waits until input is ready, negative: output comes as a list. Haven't found a way to convert a list to <class 'selenium.webdriver.remote.webelement.WebElement'>. therefore i need to add another line here
+elem = driver.find_element(By.CSS_SELECTOR,"input[name='password']")# it has found username
+elem.send_keys("testpassword") # add username
+time.sleep(1)
+#click checkbox
+select_checkbox = driver.find_elements(By.CSS_SELECTOR,"div[class='md-container md-ink-ripple']") # it has found the log in button ->[5] is date1 at test results, [6] is date2 at test results
+if numpy.array(select_checkbox).size>0:
+    select_checkbox[0].click()
+    time.sleep(1)
+
+#submit
+select_submit = driver.find_elements(By.CSS_SELECTOR,"button[type='submit']") # it has found the log in button ->[5] is date1 at test results, [6] is date2 at test results
+select_submit[0].click()
+print('input form should come up now!')
+# validate security code
+number = list(input("Enter a 6 digit number: "))
+
+elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]")
+elem[0].send_keys(number[0]) # add username
+elem[1].send_keys(number[1]) # add username
+elem[2].send_keys(number[2]) # add username
+elem[3].send_keys(number[3]) # add username
+elem[4].send_keys(number[4]) # add username
+elem[5].send_keys(number[5]) # add username
+
+# Step 2#
+exit_while_loop1=0; # in production mode set to 0. it enables while loop1 to run.
+exit_while_loop2=0; # in production mode set to 0. it disables while loop2 to run.
+idx_daily_trading=0 # in production mode set to 0. it disables while loop2 to run.
+# input for while loop1
+counter_run_only_once_while_loop1=0
+
+# 1st while loop - intended to be timeless.
+while exit_while_loop1==0:
+    # read timer 
+    # read 1st txt.file that one is connected to 'us_stock_name_model_REPORT_DONOTDELETE.csv' script
+    full_dataframe=[]
+    idx1=[]
+    full_dataframe = pandas.read_csv(filename_txt1);
+    full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+    idx1 = full_dataframe.iloc[0, 0];
+    full_dataframe=[]
+    # enter if condition, when 1st txt.file contains a 1. it means daily historical analysis is completed-> when historical analysis script is finished it overwrites txt1.file to 1.
+    if idx1==1:
+        # needs condition where once the code below has successfully run, don't run again while waiting for daily trading to start and finish. 
+        if counter_run_only_once_while_loop1==0:
+            counter_run_only_once_while_loop1=counter_run_only_once_while_loop1+1
+            #print('yay, historical analysis completed. next step to do')
+
+            #Hint:
+            ### for automation only the first 6 watchlists can be used. beyond that number, automation will fail to find the page.
+            ### Watchlists are setup fixed (to secure spots and they wont be taken) but could be automated.
+            ### when stock need to be deleted from watchlist, they need to be deleted one-by-one. it is possible. has been tested.
+            
+            # make sure stock list in watchlist is empty before adding new ones there
+            # delete all stocks from website but keep watchlist names 
+            # switch to us stock
+            time.sleep(5)
+            select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+            time.sleep(5)
+            select_automationgroup = driver.find_elements(By.XPATH,"//div[contains(@ng-click,'watchlist')]")
+            time.sleep(2)
+            fullstring=('automation')#### put this variable somewhere else
+            #print(len(select_automationgroup))
+            # find the right watchlist group out of many
+            counter_stock_available=0
+            for y in range (len(select_automationgroup)):
+                text=select_automationgroup[y].text.split(' ')
+                # looks at finding a subset of a string (substring) which matches the reference (fullstring)
+                substring=str([text[0]])
+                # print(substring,fullstring)
+                if search(fullstring,substring): 
+                    time.sleep(2)
+                    select_automationgroup[y].click()
+                    time.sleep(1)
+                    all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                    time.sleep(1)
+                    if numpy.array(all_stocks_listed_in_watchlist).size>0:#if not empty
+                        click_delete_stocks = driver.find_elements(By.CSS_SELECTOR,"div[ng-if='!selectable']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                        for yy in range (len(click_delete_stocks)):   
+                            click_delete_stocks[yy].click()
+                            time.sleep(1)
+            # if if is entered, then check all stocks if they are available on website.
+            read_csv_dataframe=[]
+            read_csv_dataframe = pandas.read_csv(filename_csv);
+            saved_stocknames = numpy.array(read_csv_dataframe.iloc[1:, 0]) # stock values from csv.file
+            #print(saved_stocknames)
+            #find stock names and put them into watchlist
+            counter_watchlist=0
+            counter_watchlist_naming_convention=0
+            counter_watchlist_when_watchlist_is_full=0
+            counter_found_watchlist_when_searched=0
+            save_index_to_delete_stock_in_csv=[]
+            max_stock_per_watchlist_page=15 # maximum 15 stocks per list
+            max_allowed_stock_to_be_used_for_day_trading=30
+            first_part=('automation')
+            for x in saved_stocknames:
+                # maybe need to delete stock from stock list file if they cannot be found on website
+                counter_watchlist=counter_watchlist+1 # this counter is used twice, therefore don't overwrite this one.
+                # create watchlist page and enter watchlist name
+                if counter_watchlist==1:
+                    # switch to us stock
+                    time.sleep(5)
+                    select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+                    select_ustrading[0].click()
+                    time.sleep(5) #big change for website and it takes 1-2 seeconds
+                    # enter watchlist name - maximum 15 stocks per list
+                    counter_watchlist_naming_convention=counter_watchlist_naming_convention+1
+                    watchlist_full_name=first_part+str(counter_watchlist_naming_convention)
+                    counter_number_watchlist=2
+                    time.sleep(2)
+                    # as per default @ created watchlist search function
+                # when max stock per watchlist is reached, stock need to be put into new one.
+                if counter_watchlist_when_watchlist_is_full==max_stock_per_watchlist_page:
+                    # enter watchlist name - maximum 15 stocks per list
+                    counter_watchlist_naming_convention=counter_watchlist_naming_convention+1
+                    watchlist_full_name=first_part+str(counter_watchlist_naming_convention)
+                    counter_watchlist_when_watchlist_is_full=0
+                # here need to make sure max 30 stock will be consindered (2 watchlists), in case i have got more stock available to choose from.
+                if counter_watchlist>max_allowed_stock_to_be_used_for_day_trading:
+                    break
+                # search all stocks and add them
+                # select search bar
+                time.sleep(2)
+                select_search = driver.find_elements(By.XPATH,"//img[contains(@src,'search/search.svg')]")
+                select_search[0].click()
+                time.sleep(1)
+
+                # enter stock in search bar
+                elem = driver.find_element(By.XPATH,"//input[contains(@type,'text')]")
+                elem.send_keys(x) # need to automate variable and it needs to be in a list otherwise it creates an error below
+                time.sleep(1) # wait for element to be entered at search bar
+
+                # find stock
+                test_stock=[x] # variable to compare from list
+                find_click_search = driver.find_elements(By.XPATH,"//div[contains(@id,'productSuggestion')]")
+                time.sleep(1)
+                counter_stock_available=0
+                for i in range (len(find_click_search)):
+                    get_first_part_symbol=find_click_search[i].text.split(' |')
+                    if len(get_first_part_symbol)>1: # in case above split fails
+                        symbol_search_option=get_first_part_symbol[0]
+                        symbol_search_option=symbol_search_option.split(',') # convert single string to list
+                    else:
+                        symbol_search_option=get_first_part_symbol
+                        symbol_search_option=symbol_search_option.split(',')# convert single string to list
+                    name_matches=list(set(symbol_search_option) & set(test_stock)) # set finds a match of two lists # find names which are in the list, if so continue saving and if not don't save
+                    # if "name_matches" is empty, then continue. it means machine name is not part of stock list. 'Else' would be that "name_matches" is part of the stock list.  
+                    if len(name_matches) == 0:
+                        #dataframe_aqua_dashboard=[]
+                        continue
+                    else:
+                        counter_stock_available=counter_stock_available+1
+                        find_click_search[i].click() # when error here, then there was no match found at all!!
+                        time.sleep(5) # website need time to load this website.
+                        break # leave for loop once stock is found and selected
+                # if counter_stock_available is zero, then stock not found at all and needs to be removed from daily trading list
+                if counter_stock_available==0:
+                    # print('not available')
+                    select_clear_search = driver.find_elements(By.XPATH,"//span[contains(@class,'clear-search')]")
+                    select_clear_search[0].click()
+                    time.sleep(1)
+                    select_cross_to_close_window = driver.find_elements(By.XPATH,"//img[contains(@class,'close-search')]") # the actual window needs to be bigger screen, otherwise cross is not click-able
+                    select_cross_to_close_window[0].click()
+                    # save stock and delete them from list at the end
+                    save_index_to_delete_stock_in_csv=numpy.append(save_index_to_delete_stock_in_csv,counter_watchlist)
+                    continue
+                    # remove stock from daily trading list
+                else:
+                    # select add to watchlist
+                    counter_watchlist_when_watchlist_is_full=counter_watchlist_when_watchlist_is_full+1
+                    select_addwatchlist = driver.find_elements(By.XPATH,"//div[contains(@ng-click,'onWatchlist')]")
+                    select_addwatchlist[0].click()
+                    time.sleep(2)
+
+                    # select correct watchlist group which is automation1 or ..2
+                    #automation_variable='automation1'
+                    select_automationgroup = driver.find_elements(By.XPATH,"//div[contains(@ng-click,'watchlist')]")
+                    time.sleep(2)
+                    #print(len(select_automationgroup))
+                    # find the right watchlist group out of many
+                    counter_stock_available=0
+                    for i in range (len(select_automationgroup)):
+                        text=select_automationgroup[i].text.split(' ')
+                        # looks at finding a subset of a string (substring) which matches the reference (fullstring)
+                        substring=str([text[0]])
+                        fullstring=watchlist_full_name
+                        # print(substring,fullstring)
+                        if search(fullstring,substring): 
+                            #print("Found!")
+                            counter_found_watchlist_when_searched=counter_found_watchlist_when_searched+1
+                            select_automationgroup[i].click() # when error here, then there was no match found at all!!
+                            time.sleep(2)
+                            select_done = driver.find_elements(By.XPATH,"//button[contains(@aria-label,'Done')]") # it has found the log in button ->[5] is date1 at test results, [6] is date2 at test results
+                            select_done[0].click()
+                            time.sleep(2)
+                            # end for loop
+                            break
+
+                    # stock is added to watchlist, default widnow view is set to stock overview. next step is to click on search again and add all stocks in watchlist      
+            # delete stock from csv.file that doesn't appear on  website
+            int_save_index_to_delete_stock_in_csv=save_index_to_delete_stock_in_csv.astype(int)
+            read_csv_dataframe=read_csv_dataframe.drop(read_csv_dataframe.index[int_save_index_to_delete_stock_in_csv])# delete unwanted rows and +1 is important since dataframe counts from 1 and numpy from 0.
+            stockname_to_index = numpy.array(read_csv_dataframe.iloc[0:, 0]) # stock values from csv.file
+            read_csv_dataframe.index=stockname_to_index # stock name to index
+            read_csv_dataframe=read_csv_dataframe.drop(read_csv_dataframe.columns[0], axis=1) # drop columns of stock names
+            read_csv_dataframe.to_csv(filename_csv, sep=',',encoding='utf-8',header='true') # create a csv.file -> overwrite existing file
+            read_csv_dataframe=[] 
+
+            # if all stocks have been added to website's watchlist and csv.file is updated accordingly, then write in 1st txt.file a 0.
+            full_dataframe = pandas.read_csv(filename_txt1);
+            full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+            full_dataframe.loc[0,'1'] =0; #
+            full_dataframe.to_csv(filename_txt1, sep=',',encoding='utf-8',header='true');# create a csv.file
+            full_dataframe=[]
+        
+            print('done. can check filename.csv file! and compare to watchlist')
+        
+    # primary read website how much time is left before daily trading starts
+    time.sleep(5) # takes some time
+    select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+    select_ustrading[0].click()
+    time.sleep(5) # takes some time
+    # select watchlist
+    select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/portfolio')]") # not sure if necessary here
+    select_watchlist[0].click() # not sure if necessary here
+    time.sleep(1) # not sure if necessary here
+    name_timer_closes_opens = driver.find_elements(By.XPATH,"//span[contains(@ng-if,'displayCountdownState==')]")
+    time.sleep(1) # not sure if necessary here
+    #print(name_timer_closes_opens[0].text)
+    substring_opens_closes_in=name_timer_closes_opens[0].text
+    timer = driver.find_elements(By.XPATH,"//span[contains(@class,'market-time')]")
+    timer_time=timer[0].text
+    time_baseline=datetime.strptime('00:00:10','%H:%M:%S')# to a given time enable if condition
+    #timer_time from webpage can be >24hrs and strptime throws an error
+    try:
+        timer_time_datetime=datetime.strptime(timer_time,'%H:%M:%S')
+    except ValueError:
+        timer_time_datetime=datetime.strptime('24:50:50','%H:%M:%S') # random high number
+    #print(timer_time_datetime,d)
+    # need to extract time here and if condition when run to zero
+        #if it runs to zero then change idx_daily_trading to 1
+        #if code indentifies that daily trading is happening already (market'closes in'), change indx_daily_trading to 1
+        #double check if txt1.file is set to 0-> it means that stock list on website and in csv.file match. it is a mandatory condition to go ahead with daily trading.
+    fullstring_opens_in='opens in'
+    fullstring_closes_in='closes in'
+    # outside of daily trading
+    if search(fullstring_opens_in,substring_opens_closes_in): 
+        if timer_time_datetime<time_baseline:
+            full_dataframe = pandas.read_csv(filename_txt1);
+            full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+            idx_stocklist_updated = full_dataframe.iloc[0, 0];
+            if idx_stocklist_updated==0:
+                idx_daily_trading=1
+            else:
+                print('at opens in, re-run while loop1 to update stock list to website first, before entering daily trading')    
+    # daily trading is happening
+    if search(fullstring_closes_in,substring_opens_closes_in):
+        full_dataframe = pandas.read_csv(filename_txt1);
+        full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+        idx_stocklist_updated = full_dataframe.iloc[0, 0];
+        if idx_stocklist_updated==0:
+            idx_daily_trading=1
+        else:
+            print('at closes in, re-run while loop1 to update stock list to website first, before entering daily trading')    
+    # # secondary read txt.file which determines start and end time of daily trading plus action that needs to be done during that time.
+    # full_dataframe=[]
+    # idx1=[]
+    # full_dataframe = pandas.read_csv(filename_txt3); ## this comes from trading timer code which is scheduled at windows scheduler
+    # full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+    # # if txt.file is 1, then enter 2nd while-loop. daily trading has started
+    # idx1 = full_dataframe.iloc[0, 0];
+    
+    if idx_daily_trading==1:
+        exit_while_loop2=1;
+        #print('yay1')
+    # 2nd while loop
+    while exit_while_loop2==1: # when avaiable is not 0, then exit while loop.
+        # primary read website how much time is left before daily trading ends -> 2-5min before it ends go into end mode code to end while loop2
+        select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+        select_ustrading[0].click()
+        time.sleep(5) # takes some time
+        # select watchlist
+        select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/portfolio')]") # not sure if necessary here
+        select_watchlist[0].click() # not sure if necessary here
+        time.sleep(1) # not sure if necessary here
+        name_timer_closes_opens = driver.find_elements(By.XPATH,"//span[contains(@ng-if,'displayCountdownState==')]")
+        time.sleep(1) # not sure if necessary here
+        #print(name_timer_closes_opens[0].text)
+        substring_opens_closes_in=name_timer_closes_opens[0].text
+        timer = driver.find_elements(By.XPATH,"//span[contains(@class,'market-time')]")
+        timer_time=timer[0].text
+        time_baseline=datetime.strptime('00:05:00','%H:%M:%S')# to a given time enable if condition
+        timer_time_datetime=datetime.strptime(timer_time,'%H:%M:%S')
+        #print(timer_time_datetime,d)
+        # need to extract time here and if condition when run to zero
+            #if it runs to zero then change idx_daily_trading to 1
+        fullstring_opens_in='opens in'
+        fullstring_closes_in='closes in'
+        if search(fullstring_closes_in,substring_opens_closes_in): 
+            if timer_time_datetime<time_baseline:
+                idx_daily_trading=0 # set idx_daily_trading to 0 which initiates exit of while loop2 and completes daily trading        
+        if search(fullstring_opens_in,substring_opens_closes_in):
+            idx_daily_trading=0
+        # # read from txt file to know when to exit 2nd while-loop
+        # full_dataframe=[]
+        # idx1=[]
+        # full_dataframe = pandas.read_csv(filename_txt3);## this comes from trading timer code which is scheduled at windows scheduler
+        # full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+        # idx1 = full_dataframe.iloc[0, 0];
+        # full_dataframe=[]
+        
+        # if txt.file is 0, then exit 2nd while-loop. daily trading is finished 
+        if idx_daily_trading==0:
+            #set setting to exit while loop2
+            exit_while_loop2=0; 
+            #print('yay2')
+            
+            # since it is 5min prior to ending of trading day. sell all stocks here.
+            select_automationgroup = driver.find_elements(By.XPATH,"//div[contains(@ng-click,'watchlist')]")
+            time.sleep(2)
+            fullstring=('automation')#### put this variable somewhere else
+            #print(len(select_automationgroup))
+            # find the right watchlist group out of many
+            counter_stock_available=0
+            for y in range (len(select_automationgroup)):
+                text=select_automationgroup[y].text.split(' ')
+                # looks at finding a subset of a string (substring) which matches the reference (fullstring)
+                substring=str([text[0]])
+                fullstring=watchlist_full_name
+                # print(substring,fullstring)
+                if search(fullstring,substring): 
+                    #print("Found!")
+                    all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                    time.sleep(0.5)
+                    for zz in range (len(all_stocks_listed_in_watchlist)):#go through all stocks in lists on website and find the right one
+                            sub_stock_name=all_stocks_listed_in_watchlist[zz]
+                            if search(stock_name,sub_stock_name): 
+                                #print("Found!")
+                                all_stocks_listed_in_watchlist[zz].click()
+                                time.sleep(1)
+                                # selling mode
+                                click_sell = driver.find_element(By.XPATH,"//div[text()='Sell']") # get the two order types
+                                click_sell.click()
+                                time.sleep(0.5)
+                                elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                # don't need to add amount of shares. it will be displayed by default
+                                # elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                # elem[0].send_keys('1') # define variable// first one is order option share
+                                # get current price from website
+                                get_current_price = driver.find_element(By.CSS_SELECTOR,"div[class='product-info-price']").text # get the two order types
+                                get_first_part_of_price=get_current_price.split(' ')# first get current price from website
+                                dollar,get_second_without_dollar=get_first_part_of_price[0].split('$')                   
+                                float_number_current_price_without_dollar=float(get_second_without_dollar) # decimal number is float
+                                if float_number_current_price_without_dollar>float(2):# requirement that when stock is above 2dollars, then i can only buy x.xx and not x.xxx
+                                    round_current_price=numpy.round(float_number_current_price_without_dollar, 2)
+                                    #round_current_price=Decimal(float_number_current_price_without_dollar).quantize(Decimal('.01'), rounding=ROUND_DOWN)
+                                else:
+                                    round_current_price=float_number_current_price_without_dollar
+                                try:
+                                    elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                    elem[1].send_keys(round_current_price) # define variable// first one is order option share
+                                    time.sleep(0.2) # 
+                                except NoSuchElementException:  #spelling error making this code not work as expected
+                                    print('error')
+                                # verify selling mode by clicking on review and buy -> i think it is one more click here!!!
+            
+            # delete all stocks from website but keep watchlist names 
+            time.sleep(5)
+            select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+            time.sleep(5)
+            select_automationgroup = driver.find_elements(By.XPATH,"//div[contains(@ng-click,'watchlist')]")
+            time.sleep(2)
+            fullstring=('automation')#### put this variable somewhere else
+            #print(len(select_automationgroup))
+            # find the right watchlist group out of many
+            counter_stock_available=0
+            for y in range (len(select_automationgroup)):
+                text=select_automationgroup[y].text.split(' ')
+                # looks at finding a subset of a string (substring) which matches the reference (fullstring)
+                substring=str([text[0]])
+                # print(substring,fullstring)
+                if search(fullstring,substring): 
+                    time.sleep(2)
+                    select_automationgroup[y].click()
+                    time.sleep(1)
+                    all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                    time.sleep(1)
+                    if numpy.array(all_stocks_listed_in_watchlist).size>0:#if not empty
+                        click_delete_stocks = driver.find_elements(By.CSS_SELECTOR,"div[ng-if='!selectable']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                        for yy in range (len(click_delete_stocks)):   
+                            click_delete_stocks[yy].click()
+                            time.sleep(1)
+
+            # maybe empty other txt.files??!!->there is nothing else
+            
+            # set txt2.file -set all stocks nothing,buy,sell to 0??? need to add 5min prior to ending all stock set to sell
+            full_dataframe=[]
+            full_dataframe = pandas.read_csv(filename_txt2);
+            full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+            for zzz in range(len(full_dataframe)): # range() determines how many processes will be executed and that is determined by how many stocks will I play with.
+                full_dataframe.loc[zzz,'1'] =0; #output of do something
+            full_dataframe.to_csv(filename_txt2, sep=',',encoding='utf-8',header='true');# create a csv.file
+            # print(full_dataframe)
+            full_dataframe=[]
+
+        else:
+            # do action here while daily trading
+            # loop to go through all potential stocks from stock list                   
+                    
+            # initialise sell or buy on website according to outcome of save_time max and min
+                  # look at 'sell_buy_sell_daily_trading.txt' file to find out whether nothing,sell or buy action is placed
+                  # go in order from row 0 to the end to fulfil all tasks
+               
+            df_daily_trading_output=[]
+            df_daily_trading_output_buy_sell_occurence=[]
+            add_counter_for_each_cycle=0
+            counter_trading_output_buy_sell_output=0
+            df_current=pandas.DataFrame() # for testing purposes dataframe needs to un/commented. whatever fits. in end code it needs to be added to a part where it doesn't disturb cycle code. only empty this variable when trading day is over.
+            df_current2=pandas.DataFrame() # delete when code goes clinical
+            df_daily_trading_output_buy_sell_occurence = pandas.DataFrame()#convert pandas series to dataframe
+            df_daily_trading_output = pandas.DataFrame()#convert pandas series to dataframe
+
+            if os.path.exists(filename_csv):
+                start_time3 = time.time()
+                # one cycle should not exceed 1 min from start to end of code below.
+                # counter per cycle
+                #add_counter_for_each_cycle=1# under clinical condition this line should be commented add_counter_for_each_cycle=add_counter_for_each_cycle+1
+                # save stocknames from csv.file to get access to full day of trading data
+                read_csv_dataframe=[]
+                read_csv_dataframe = pandas.read_csv(filename_csv) # read data from csv.file
+                saved_stocknames = numpy.array(read_csv_dataframe.iloc[0:, 0]) # stock values from csv.file
+                # print(saved_stocknames)   
+                # go to website and get current stock value for all stock names
+                # utilize watchlist to access current stock value
+                time.sleep(1)
+                select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+                select_ustrading[0].click()
+                time.sleep(5) # takes some time
+                # select watchlist
+                select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                select_watchlist[0].click()
+                time.sleep(1)
+                # select watchlist to readout value of stocks
+                # currently number of automation watchlists is fixed
+                select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                time.sleep(1)
+                fullstring=('automation')
+                counter_select_automation_watchlist=0
+                append_all_stock_values=[]
+                append_substring_watchlist_name=[]
+                append_substockname_index_at_website_watchlist=[]
+                append_substockname_at_website_watchlist=[]
+                #counter_double_foor_loop=0
+                for i in range (len(select_all_watchlists)):
+                    text=select_all_watchlists[i].text#.split(' ')
+                    # looks at finding a subset of a string (substring) which matches the reference (fullstring)
+                    substring=str([text])
+                    # print(substring,fullstring)
+                    if counter_select_automation_watchlist==0:
+                        counter_select_automation_watchlist=1
+                        continue # first i is invalid
+                    # finds automation 1,2... and clicks on it  
+                    if search(fullstring,substring): 
+                        #print("Found!")
+                        select_all_watchlists[i].click()
+                        time.sleep(1)
+                        #get stock values from watchlist
+                        all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                        for ii in range (len(all_stocks_listed_in_watchlist)):
+                            sub_stock_name=all_stocks_listed_in_watchlist[ii].text
+                            sub_stock_name_for_append=sub_stock_name.split(' |')
+                            append_substring_watchlist_name= numpy.append(append_substring_watchlist_name,i) # adding columns names to dataframe
+                            #append_substring_watchlist_name= numpy.append(append_substring_watchlist_name,substring) # adding columns names to dataframe
+                            append_substockname_at_website_watchlist=numpy.append(append_substockname_at_website_watchlist,sub_stock_name_for_append[0])
+                            append_substockname_index_at_website_watchlist=numpy.append(append_substockname_index_at_website_watchlist,ii)
+                            txt_separation_second_is_dollar=all_stocks_listed_in_watchlist[ii].text.split('\n')# separating by \n
+                            txt_separation_rid_of_dollar_sign=txt_separation_second_is_dollar[1].split('$')# second value is stock value
+                            # print(txt_separation_rid_of_dollar_sign[1])
+                            # append all stock values
+                            append_all_stock_values= numpy.append(append_all_stock_values,txt_separation_rid_of_dollar_sign[1]) # adding columns names to dataframe
+                            #counter_double_foor_loop=counter_double_foor_loop+1
+                # compare previous and current stock values. if previous stock is same as actual then it won't be considered further in the code.
+                # add stock values to dataframe
+                if add_counter_for_each_cycle>0: 
+                    # save stock point data
+                    df_current.loc[length_of_all_stock_values_arange,add_counter_for_each_cycle]=append_all_stock_values  
+                    #extract last 2 columns including all rows to be able to compare most recent stock values 
+                    df_current_last_two_cols = df_current.iloc[:,-2:]# last 2 columns and all rows
+                    #find dublicates and delete them
+                    for iii in range(length_of_all_stock_values): #go through each row of dataframe and check for dublicates
+                        pandas_find_dublicates = pandas.Series(df_current_last_two_cols.iloc[iii,:])
+                        pandas_find_dublicates_object=pandas_find_dublicates[pandas_find_dublicates.duplicated()]
+                        df_delete_dublicates = pandas.DataFrame(pandas_find_dublicates_object)#convert pandas series to dataframe
+                        numpy_array_delete_dublicates_index=numpy.array(df_delete_dublicates.index) # index of dublicates that needs deletion
+                        if numpy_array_delete_dublicates_index.size>0:
+                            df_current.iloc[iii, -1:]=numpy.nan # replace last stock value (current stock value) with nan if it is a dublicate
+                else:
+                    # prepare data for .loc in if condition
+                    length_of_all_stock_values=len(append_all_stock_values)
+                    length_of_all_stock_values_arange=numpy.arange(0, length_of_all_stock_values, 1, dtype=int)
+                    # save stock point data
+                    df_current.index=length_of_all_stock_values_arange
+                    df_current.loc[length_of_all_stock_values_arange,0]=append_all_stock_values
+
+                # align order of histocial stocknames from csv.file so that df_current and history data are the same. on website the order appears to be different than on csv.file.
+                align_order_stockname_dataframe=[]
+                align_order_stockname_dataframe = pandas.read_csv(filename_csv) # read data from csv.file
+                align_order_stockname_dataframe.index=saved_stocknames
+                new_order_stock_name=append_substockname_at_website_watchlist
+                align_order_stockname_dataframe = align_order_stockname_dataframe.loc[new_order_stock_name, :]#reorder dataframe using new order of indexes
+                index_name=length_of_all_stock_values_arange #[0,1,2,3,4,5,6,7,8,9,10,11,12]
+                align_order_stockname_dataframe.index=index_name
+                # add this dataframe to below code
+
+                # ######################### testing purposes, delete when code is clinical###############
+                # df_current_not_appended =align_order_stockname_dataframe.iloc[0:, add_counter_for_each_cycle+1] # col should be above 1 to get stock values only, at 0 there is stock names. 
+                # #print(df_current)
+                # length_of_all_stock_values=len(align_order_stockname_dataframe)
+                # length_of_all_stock_values_arange=numpy.arange(0,length_of_all_stock_values, 1, dtype=int)
+                # #print(length_of_all_stock_values,'# of stocks or rows [xx]')
+                # df_current.index=length_of_all_stock_values_arange
+                # df_current.loc[length_of_all_stock_values_arange,add_counter_for_each_cycle] =df_current_not_appended;
+                # ######################################## until here ###################################
+
+                # save df_current data -> so that dataframe doesn't become too big and speed is not affected in the long run as well as memory
+                if add_counter_for_each_cycle==0:
+                    df_current_transpose=df_current.transpose()
+                    df_current_transpose.to_csv(filename_csv_df_current, sep=',',encoding='utf-8',header='true') # create a csv.file 
+                    df_current=[]
+                    df_current_transpose=[]
+                    df_current= pandas.DataFrame()#convert pandas series to dataframe
+
+                if add_counter_for_each_cycle>1:
+                    df_current_transpose=df_current.transpose()
+                    df_current_transpose.to_csv(filename_csv_df_current, mode='a', header=False) # it does append to existing csv.file
+                    df_current=[]
+                    df_current_transpose=[]
+                    df_current= pandas.DataFrame()#convert pandas series to dataframe
+
+                # reload df_current so it can be used in the following 40 functions
+                read_csv_dataframe_df_current=[]
+                read_csv_dataframe_df_current = pandas.read_csv(filename_csv_df_current) # read data from csv.file
+                df_current_from_csv_transpose = read_csv_dataframe_df_current.iloc[0:, 1:] # col 1, 0 is index which is by default 0 and not considered to be a stock values
+                df_current_from_csv=df_current_from_csv_transpose.transpose()
+                df_current_from_csv_transpose=[]
+                
+                print(df_current_from_csv)
+                print(align_order_stockname_dataframe)
+                
+                #timer
+                start_time2 = time.time()
+
+                # 40 functions that starts model and input and output will be handled in that function. CPU runs at 100% when running 40 scripts simultaneous
+                # length_of_all_stock_values=len(append_all_stock_values)# uncomment when in clinical mode
+                # start first 20 multiprocesses
+                if __name__ == '__main__':
+                    processes=[] # to append all processes
+                    for iiii in range(int(length_of_all_stock_values/2)): # range() determines how many processes will be executed and that is determined by how many stocks will I play with.
+                        #prepare row data
+                        xx=iiii # x will start with 0 (defines row (row refers to a stock) in spreadsheets 'list of df_current' and 'filename_csv_stock_for_daily_trading')
+                        #prepare df_current data
+                        df_current_all_values_of_current_stock=[]
+                        df_current_all_values_of_current_stock = df_current_from_csv.iloc[iiii,0:]# last 2 columns and all rows
+                        df_current_all_values_of_current_stock=df_current_all_values_of_current_stock.dropna()# delete NANs
+                        df_current_all_values_of_current_stock_length=len(df_current_all_values_of_current_stock)# number of rows
+                        df_current_all_values_of_current_stock_length_arange=numpy.arange(0,  df_current_all_values_of_current_stock_length, 1, dtype=int)
+                        df_current_all_values_of_current_stock.index=df_current_all_values_of_current_stock_length_arange# fix index
+                        #filename_csv_stock_for_daily_trading; # get only 1 row containing stock name and daily history data of stock
+                        saved_stocknames_values_current_stock=[]
+                        saved_stocknames_values_current_stock = align_order_stockname_dataframe.iloc[iiii, 0:] # contains ticker at [iiii,0] followed by stock values [iiii,1:]
+                        saved_stocknames_values_current_stock=saved_stocknames_values_current_stock.dropna()# delete NANs
+                        saved_stocknames_values_current_stock_length=len(saved_stocknames_values_current_stock)# number of rows
+                        saved_stocknames_values_current_stock_length_arange=numpy.arange(0,  saved_stocknames_values_current_stock_length, 1, dtype=int)
+                        saved_stocknames_values_current_stock.index=saved_stocknames_values_current_stock_length_arange# fix index
+                        # send input to multiprocessing form
+                        #print(saved_stocknames_values_current_stock,df_current_all_values_of_current_stock,xx)
+                        p=multiprocessing.Process(target=prepare_outcome_dailymodel, args=(saved_stocknames_values_current_stock,df_current_all_values_of_current_stock,xx)) # build a list of multiprocesses
+                        processes.append(p)# append them
+                    for p in processes:# start them
+                        #enable process to be daemon-> run in the background
+                        p.daemon = True
+                        p.start()
+                        #time.sleep(30)
+                    for p in processes:# end each of them. it means the main program waits until all multiprocesses are done before continuing.
+                        p.join()
+                # next 20 multiprocesses
+                if __name__ == '__main__':
+                    processes=[] # to append all processes
+                    for iiii in range((int(length_of_all_stock_values/2))+1,length_of_all_stock_values): # range() determines how many processes will be executed and that is determined by how many stocks will I play with.
+                        #prepare row data
+                        xx=iiii # x will start with 0 (defines row (row refers to a stock) in spreadsheets 'list of df_current' and 'filename_csv_stock_for_daily_trading')
+                        #prepare df_current data
+                        df_current_all_values_of_current_stock=[]
+                        df_current_all_values_of_current_stock = df_current_from_csv.iloc[iiii,0:]# last 2 columns and all rows
+                        df_current_all_values_of_current_stock=df_current_all_values_of_current_stock.dropna()# delete NANs
+                        df_current_all_values_of_current_stock_length=len(df_current_all_values_of_current_stock)# number of rows
+                        df_current_all_values_of_current_stock_length_arange=numpy.arange(0,  df_current_all_values_of_current_stock_length, 1, dtype=int)
+                        df_current_all_values_of_current_stock.index=df_current_all_values_of_current_stock_length_arange# fix index
+                        #filename_csv_stock_for_daily_trading; # get only 1 row containing stock name and daily history data of stock
+                        saved_stocknames_values_current_stock=[]
+                        saved_stocknames_values_current_stock = align_order_stockname_dataframe.iloc[iiii, 0:] # contains ticker at [iiii,0] followed by stock values [iiii,1:]
+                        saved_stocknames_values_current_stock=saved_stocknames_values_current_stock.dropna()# delete NANs
+                        saved_stocknames_values_current_stock_length=len(saved_stocknames_values_current_stock)# number of rows
+                        saved_stocknames_values_current_stock_length_arange=numpy.arange(0,  saved_stocknames_values_current_stock_length, 1, dtype=int)
+                        saved_stocknames_values_current_stock.index=saved_stocknames_values_current_stock_length_arange# fix index
+                        # send input to multiprocessing form
+                        #print(saved_stocknames_values_current_stock,df_current_all_values_of_current_stock,xx)
+                        p=multiprocessing.Process(target=prepare_outcome_dailymodel, args=(saved_stocknames_values_current_stock,df_current_all_values_of_current_stock,xx)) # build a list of multiprocesses
+                        processes.append(p)# append them
+                    for p in processes:# start them
+                        #enable process to be daemon-> run in the background
+                        p.daemon = True
+                        p.start()
+                        #time.sleep(30)
+                    for p in processes:# end each of them. it means the main program waits until all multiprocesses are done before continuing.
+                        p.join()
+
+                # timer ends
+                #print("--- %s seconds --- ---time of running model only" % (time.time() - start_time2))
+
+                # after model has run, txt2 file contains output of model. go back to website!
+                # when sell or buy occurs twice in a row, it should be picked up when buy or sell button is clicked-> output should be
+                  # empty. maybe test whether thats true and if true, add if condition there.
+                if os.path.exists(filename_txt2):
+                    # select_ustrading = driver.find_elements(By.XPATH,"//li[contains(@class,'US_TRADING')]")
+                    # select_ustrading[0].click()
+                    # time.sleep(5) # takes some time
+                    # select watchlist
+                    select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                    if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                        select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                        time.sleep(0.5) # test this
+                        if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                            select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                            time.sleep(0.5) # test this
+                    select_watchlist[0].click()
+                    # select watchlist to readout value of stocks
+                    select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                    if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                        select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                        time.sleep(0.5) # test this
+                        if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                            select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                            time.sleep(0.5) # test this    
+                    #idx1=[]
+                    full_dataframe = pandas.read_csv(filename_txt2);
+                    full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);# creates random column that needs deletion
+
+                    for iiiii in range(length_of_all_stock_values): # range() determines how many processes will be executed and that is determined by how many stocks will I play with.
+                        counter_select_automation_watchlist=0
+                        decision_variable = full_dataframe.iloc[iiiii, 0] # # send 0 (nothing), 1 (sell) and 2 (buy) to txt.file ('sell_buy_sell_daily_trading.txt')
+                        # this stock variable needs to be taken from above. txt2 doesn't contain a tickers
+                        stock_name=align_order_stockname_dataframe.iloc[iiiii, 0]# current stock name as a ticker//fullstring=('automation')
+                        for_loop_replacement_watchlistname=append_substring_watchlist_name[iiiii].astype(int)
+                        for_loop_replacement_idx_of_stockname=append_substockname_index_at_website_watchlist[iiiii].astype(int)
+
+                        # enter if condition, when 1st txt.file contains a 1. it means daily historical analysis is completed.
+                        # if txt.file is 0, then exit 2nd while-loop. daily trading is finished
+                        if decision_variable==1: #buying mode 
+                            # initialise sell or buy on website according to outcome of save_time max and min
+                            # click on watchlist name-> currently number of automation watchlists is fixed
+                            select_all_watchlists[for_loop_replacement_watchlistname].click()
+                            time.sleep(0.5) # 
+                            # select all stock names from the watchlist
+                            all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                            time.sleep(0.5) #
+                            # select specific stock name and get current price from watchlist
+                            # txt_separation_second_is_dollar=all_stocks_listed_in_watchlist[for_loop_replacement_idx_of_stockname].text.split('\n')# separating by \n 
+                            # txt_separation_rid_of_dollar_sign=txt_separation_second_is_dollar[1].split('$')# second value is stock value
+                            # click on stock name from watchlist to get into selling/buy website -> opens new website
+                            if numpy.array(all_stocks_listed_in_watchlist).size>0: # sometimes website loades slower then usual
+                                all_stocks_listed_in_watchlist[for_loop_replacement_idx_of_stockname].click()
+                                time.sleep(1.0)
+                            else:
+                                print('error')
+                            # buy mode (is set to default)
+                            # there are two input options or order types: 1) shares, 2) price
+                            # order type shares -> how many shares do I want to buy. I can switch to purchase by amount in dollars instead of purchase amount of shares (set a default) 
+                            try:
+                                elem = driver.find_element(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                elem.send_keys('1') # define variable// first one is order option share
+                                time.sleep(0.3)
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            # order type price-> get current price from website
+
+                            # don't need to add amount of shares. it will be displayed by default
+                            # elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                            # elem[0].send_keys('1') # define variable// first one is order option share
+                            # get current price from website
+                            try:
+                                get_current_price = driver.find_element(By.CSS_SELECTOR,"div[class='product-info-price']").text # get the two order types
+                                time.sleep(0.3) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            get_first_part_of_price=get_current_price.split(' ')# first get current price from website
+                            dollar,get_second_without_dollar=get_first_part_of_price[0].split('$')
+                            float_number_current_price_without_dollar=float(get_second_without_dollar) # decimal number is float
+                            if float_number_current_price_without_dollar>float(2):# requirement that when stock is above 2dollars, then i can only buy x.xx and not x.xxx
+                                round_current_price=numpy.round(float_number_current_price_without_dollar, 2)
+                                #round_current_price=Decimal(float_number_current_price_without_dollar).quantize(Decimal('.01'), rounding=ROUND_DOWN)
+                            else:
+                                round_current_price=float_number_current_price_without_dollar
+                            # enter price amount
+                            try:
+                                elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                elem[1].send_keys(round_current_price) # define variable// first one is order option share
+                                time.sleep(0.2) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            # verify selling and buying mode by clicking on review and buy -> i think it is one more click here!!!
+
+                            # get out of selling/buying onto next iteration -> click on watchlist                                            
+                            select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                            if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                                select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                                time.sleep(0.5) # test this
+                                if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                                    select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                                    time.sleep(0.5) # test this
+                            select_watchlist[0].click()
+                            # select watchlist to readout value of stocks
+                            select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                            if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                                select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                                time.sleep(0.5) # test this
+                                if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                                    select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                                    time.sleep(0.5) # test this
+
+                        if decision_variable==2:  # selling mode
+                            # click on watchlist name-> currently number of automation watchlists is fixed
+                            select_all_watchlists[for_loop_replacement_watchlistname].click()
+                            time.sleep(0.5) # 
+                            all_stocks_listed_in_watchlist = driver.find_elements(By.CSS_SELECTOR,"share-tile[class='card']")#.get_attribute("innerText") # get test results from most recent test during the day which is the last test in the list (when test was running multiple times during the day)
+                            time.sleep(0.5) # 
+                            # select specific stock name and get current price from watchlist
+                            # txt_separation_second_is_dollar=all_stocks_listed_in_watchlist[for_loop_replacement_idx_of_stockname].text.split('\n')# separating by \n 
+                            # txt_separation_rid_of_dollar_sign=txt_separation_second_is_dollar[1].split('$')# second value is stock value
+                            # click on stock name from watchlist to get into selling/buy website -> opens new website
+                            if numpy.array(all_stocks_listed_in_watchlist).size>0: # sometimes website loades slower then usual
+                                all_stocks_listed_in_watchlist[for_loop_replacement_idx_of_stockname].click()
+                                time.sleep(1.0)
+                            else:
+                                print('error')
+                            # selling mode
+                            try:
+                                click_sell = driver.find_element(By.XPATH,"//div[text()='Sell']") # get the two order types
+                                click_sell.click()
+                                time.sleep(0.3) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            try:
+                                elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                time.sleep(0.3) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            # don't need to add amount of shares. it will be displayed by default
+                            # elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                            # elem[0].send_keys('1') # define variable// first one is order option share
+                            # get current price from website
+                            try:
+                                get_current_price = driver.find_element(By.CSS_SELECTOR,"div[class='product-info-price']").text # get the two order types
+                                time.sleep(0.3) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            get_first_part_of_price=get_current_price.split(' ')# first get current price from website
+                            dollar,get_second_without_dollar=get_first_part_of_price[0].split('$')                   
+                            float_number_current_price_without_dollar=float(get_second_without_dollar) # decimal number is float
+                            if float_number_current_price_without_dollar>float(2):# requirement that when stock is above 2dollars, then i can only buy x.xx and not x.xxx
+                                round_current_price=numpy.round(float_number_current_price_without_dollar, 2)
+                                #round_current_price=Decimal(float_number_current_price_without_dollar).quantize(Decimal('.01'), rounding=ROUND_DOWN)
+                            else:
+                                round_current_price=float_number_current_price_without_dollar
+                            try:
+                                elem = driver.find_elements(By.XPATH,"//input[contains(@id,'input_')]") # get the two order types
+                                elem[1].send_keys(round_current_price) # define variable// first one is order option share
+                                time.sleep(0.2) # 
+                            except NoSuchElementException:  #spelling error making this code not work as expected
+                                print('error')
+                            # verify selling and buying mode by clicking on review and buy -> i think it is one more click here!!!
+
+                            # get out of selling/buying onto next iteration -> click on watchlist                                            
+                            select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                            if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                                select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                                time.sleep(0.5) # test this
+                                if numpy.array(select_watchlist).size==0: # sometimes website loades slower then usual
+                                    select_watchlist = driver.find_elements(By.XPATH,"//a[contains(@href,'/dashboard/watchlist')]")
+                                    time.sleep(0.5) # test this
+                            select_watchlist[0].click()
+                            # select watchlist to readout value of stocks
+                            select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                            if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                                select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                                time.sleep(0.5) # test this
+                                if numpy.array(select_all_watchlists).size==0: # sometimes website loades slower then usual
+                                    select_all_watchlists = driver.find_elements(By.XPATH,"//div[contains(@id,'watchlist')]")
+                                    time.sleep(0.5) # test this
+
+                        #stock price daily trading output
+                        #round_current_price_append=numpy.append(round_current_price_append,round_current_price)
+                        if decision_variable==0:
+                            round_current_price=df_current_from_csv.iloc[iiiii,-1]#always pick last value. last value should be the current stock value which i want to save in the csv.file
+                        df_daily_trading_output.index=length_of_all_stock_values_arange
+                        if add_counter_for_each_cycle==0:
+                            df_daily_trading_output.loc[iiiii,0] =stock_name; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards.
+                            df_daily_trading_output.loc[iiiii,1] =round_current_price;# last 2 columns and all rows; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards.
+                        else:
+                            df_daily_trading_output.loc[iiiii,add_counter_for_each_cycle+1] =round_current_price; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards.
+                        #buy sell occurence daily trading output
+                        df_daily_trading_output_buy_sell_occurence.index=length_of_all_stock_values_arange
+                        if add_counter_for_each_cycle==0:
+                            df_daily_trading_output_buy_sell_occurence.loc[iiiii,0] =stock_name; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards.
+                            df_daily_trading_output_buy_sell_occurence.loc[iiiii,1] =decision_variable; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards.
+                        else:
+                            df_daily_trading_output_buy_sell_occurence.loc[iiiii,add_counter_for_each_cycle+1] =decision_variable; # row contains stock data for each stock such as ticker at col 0 and values from col 1: onwards. 
+                    # save analysis data
+                    #stock price daily trading output
+                    if numpy.array(df_daily_trading_output).size>0:
+                        if counter_trading_output_buy_sell_output==0:
+                            df_daily_trading_output_transpose=df_daily_trading_output.transpose()
+                            df_daily_trading_output_transpose.to_csv(filename_csv_output_stock_price, sep=',',encoding='utf-8',header='true') # create a csv.file 
+                            df_daily_trading_output=[]
+                            df_daily_trading_output_transpose=[]
+                            df_daily_trading_output= pandas.DataFrame()#convert pandas series to dataframe
+
+                        if counter_trading_output_buy_sell_output>0:
+                            df_daily_trading_output_transpose=df_daily_trading_output.transpose()
+                            df_daily_trading_output_transpose.to_csv(filename_csv_output_stock_price, mode='a', header=False) # it does append to existing csv.file
+                            df_daily_trading_output=[]
+                            df_daily_trading_output_transpose=[]
+                            df_daily_trading_output= pandas.DataFrame()#convert pandas series to dataframe                  
+                    #buy sell occurence daily trading output
+                    if numpy.array(df_daily_trading_output_buy_sell_occurence).size>0:
+                        if counter_trading_output_buy_sell_output==0:
+                            df_daily_trading_output_buy_sell_occurence_transpose=df_daily_trading_output_buy_sell_occurence.transpose()
+                            df_daily_trading_output_buy_sell_occurence_transpose.to_csv(filename_csv_output_buy_sell_occurence, sep=',',encoding='utf-8',header='true') # create a csv.file 
+                            df_daily_trading_output_buy_sell_occurence=[]
+                            df_daily_trading_output_buy_sell_occurence_transpose=[]
+                            df_daily_trading_output_buy_sell_occurence= pandas.DataFrame()#convert pandas series to dataframe
+
+                        if counter_trading_output_buy_sell_output>0:
+                            df_daily_trading_output_buy_sell_occurence_transpose=df_daily_trading_output_buy_sell_occurence.transpose()
+                            df_daily_trading_output_buy_sell_occurence_transpose.to_csv(filename_csv_output_buy_sell_occurence, mode='a', header=False) # it does append to existing csv.file
+                            df_daily_trading_output_buy_sell_occurence=[]
+                            df_daily_trading_output_buy_sell_occurence_transpose=[]
+                            df_daily_trading_output_buy_sell_occurence= pandas.DataFrame()#convert pandas series to dataframe
+
+                    full_dataframe=[]
+                # timer ends
+                print("--- %s seconds --- ---time each cycle" % (time.time() - start_time3))
+                #### do not delete below comment #####   
+                add_counter_for_each_cycle=add_counter_for_each_cycle+1# under clinical condition this line should be uncommented
+                counter_trading_output_buy_sell_output=counter_trading_output_buy_sell_output+1
+        
+        ######################################                        
+        # new cycle of while loop2 can start
+
+        # pause of itering 2nd while loop
+            #could add if function here, if time is below 60, wait until 60s is finished ->assumption is here that every 1 min stock values are updated on website.
+        total_time_while_loop2=time.time() - start_time3 # in seconds
+        if total_time_while_loop2<60:
+            time_left_to_sixty_seconds=60-total_time_while_loop2
+            time.sleep(time_left_to_sixty_seconds) # initial 5mins # checks in every seconds -> 60(60secs=1min)*60(60mins=1hr)*8(8hrs)
+        
+        # this will garantee that after running while loop2 in while loop1 stock will be added to automation watchlist
+        counter_run_only_once_while_loop1=0
+    
+    # pause of itering 1st while loop -> it keeps memory and CPU usage to minimum
+    time.sleep(10) # initial 5mins # checks in every seconds -> 60(60secs=1min)*60(60mins=1hr)*8(8hrs)
