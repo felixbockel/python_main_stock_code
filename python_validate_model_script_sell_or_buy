@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+# validate model script whether buy or sell need to happen. 
+
+# coding: utf-8
+#select row and press ctrl/ to comment and uncomment
+
+#!pip install yfinance
+#!pip install mplfinance
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime
+import numpy
+import matplotlib.pyplot as plt 
+# from pandas import * 
+# change to import pandas and may need to change things in script
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+# import scipy.io # disabled that -> may need to check whether it causes any issues
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+
+from Stock_Trading_Model_Meanavg_Savol_Double_Definition import *
+
+# Idea #
+# -this script will be copied 40x times to be able to cover all stock from spreadsheet 'us_stock_name_model_REPORT_DONOTDELETE.csv'
+#   - it means each stock represents one script
+# - it needs to be kick-started and ended by script 'US_determines_trading_hours_and_is_connected_to_function1'. This script is suppose to run only during trading hours.
+# - once it is kick-started this script communicates with script 'function 1' via spreadsheet
+#   - input contains: 1) df_current (already appended), 
+#   - output contains: 1) maxima and minima time stamp as well as indexes of stock, 2) maybe sends out 1 and 0 to txt.file 
+
+# TO DO #
+
+# what value is 'var' when results are as they are.
+
+def prepare_outcome_dailymodel(saved_stocknames_values_current_stock,df_current,xx): 
+        # Input #
+        # filename_txt1=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/determine_trading_time_stopp_all_stocks_from_trading.txt.txt');
+        filename_txt2=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/function1_nothing_sell_buy_sell.txt');
+        # filename_csv_stock_for_daily_trading=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_name_model_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+        var_row=xx
+        # var_coloumn=str(int(xx)) # in case xx is a numpy. convert to int first and then to a string to be able to point to a coloumn for a text file.
+        save_time_at_extrema_max,save_time_at_extrema_min,collect_extrams_idx_max,collect_extrams_idx_min,counter_which_aligns_with_time=model_moving_avg_savol_double_daily_data(saved_stocknames_values_current_stock,df_current)
+        # when 'save_time_max' and 'save_time_min' indicate a found max or min, need to export that to function 1
+            # send 0 (nothing), 1 (sell) and 2 (buy) to txt.file ('sell_buy_sell_daily_trading.txt') and use x as row position
+        #length of df_current and counter should be same length->to investigate
+        df_current_length=len(df_current)# want to see whether the counter and len(df_current) are the same
+        # print(df_current_length,counter_which_aligns_with_time)
+        # print(save_time_at_extrema_max,save_time_at_extrema_min,collect_extrams_idx_max,collect_extrams_idx_min,counter_which_aligns_with_time)
+        # compare if counter and time_max or time_min
+        time_max_compare_counter=numpy.intersect1d(save_time_at_extrema_max,counter_which_aligns_with_time)# max
+        time_min_compare_counter=numpy.intersect1d(save_time_at_extrema_min,counter_which_aligns_with_time)# min
+        # print(time_max_compare_counter,time_min_compare_counter)
+        var_not_enter_min_if_condition=0 # in case max is found and var=1, no need to enter min if condition since there is only one condition at time min or max.
+        if (numpy.array(time_max_compare_counter)).size > 0: #if it is not empty, max found
+            var=1 # 1 = sell
+            var_not_enter_min_if_condition=1
+        else:
+            var=0 # 0 = nothing
+        if var_not_enter_min_if_condition==0:
+            if (numpy.array(time_min_compare_counter)).size > 0: #if it is not empty, min found
+                var=2 # 2 = buy
+            else:
+                var=0 # 0 = nothing
+        # if variable is max, then 1 and so on
+        full_dataframe = pandas.read_csv(filename_txt2);
+        full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+        full_dataframe.loc[var_row,'1']=var; # '1' is first row of txt.file # output of do something
+        full_dataframe.to_csv(filename_txt2, sep=',',encoding='utf-8',header='true');# it does append to existing csv.file
+        full_dataframe=[]
