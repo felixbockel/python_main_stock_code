@@ -1,0 +1,357 @@
+#!pip install yfinance
+#!pip install mplfinance
+
+# first function adds extension to ticker that are chosen for daily trading. extension consists of full day of trading a day before that. 
+# second function combines historical_data and price_fluctuation_noise data and chooses the best tickers for daily trading.
+# second function uses first function.
+
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime, timedelta
+import numpy
+import matplotlib.pyplot as plt 
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+import scipy.io
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+import os.path
+from US_Model_Definitions import *
+# avoid printing outout
+from IPython.utils import io
+
+
+#!pip install yfinance
+#!pip install mplfinance
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime, timedelta
+import numpy
+import matplotlib.pyplot as plt 
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+import scipy.io
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+import os.path
+from US_Model_Definitions import *
+# avoid printing outout
+from IPython.utils import io
+
+# 1st Function #
+# 1st function is only used in 2nd function which can be found below. It means it doesn't need to be called by another script. #
+
+def pull_very_recently_daily_data_one_day_length(saved_stocknames_append,status_overall_stocks_append,length_above_fourty): # all inputs as numpy array
+    # print(saved_stocknames_append) # show all stock 
+    ## run part of model through 1 day of trading data of previous day and assess if there are error. if errors take out stock of list
+    today = datetime.today()
+    start_day_subtracted = datetime.today() - timedelta(days=7) # extract one week
+    end_day_subtracted = datetime.today() - timedelta(days=1) # extract one week
+    range_of_business_days_end_top=pandas.bdate_range(start=start_day_subtracted, end=end_day_subtracted)[::-1] # range of business days #just need last day
+    # range_of_business_days_end_top=pandas.bdate_range(start=start_day_subtracted, end=today)[::-1] # range of business days #just need last day
+    range_of_business_days_first_top=range_of_business_days_end_top[::-1] # range of business days #just need last day
+    ed = range_of_business_days_end_top[0].strftime('%Y-%m-%d')
+    sd = range_of_business_days_first_top[0].strftime('%Y-%m-%d')
+    #range_of_business_days_without_last_day.strftime('%Y-%m-%d')
+    df_stock_data=[]
+    test_if_empty=[]
+    save_stock_name=[]
+    save_stock_data=[]
+    save_stock_overall_status=[]
+    counter=0
+    counter_stock_name_model=0
+    counter_save_stock_overall_status=0
+    df_stock_name_model = pandas.DataFrame() # setup dataframe and index equals to name of tests
+
+    for x in saved_stocknames_append:
+        df_stock_data=[]
+        test_if_empty=[] 
+
+        counter_save_stock_overall_status=counter_save_stock_overall_status+1
+
+        # download stock data from yahoo. it contains close,open, high, low and volume.
+        with io.capture_output() as captured:#avoid printing output
+            df_stock_data = yf.download(tickers=x, start=sd, end=ed, interval="1m")
+
+        df_stock_data=df_stock_data.Close[::]
+        #if stock data is empty, then exclude from list
+        test_if_empty = numpy.asarray(df_stock_data)  # converts it to an array if it's not an array.
+        # determine if data is empty i.e. stock is not registered with yahoo
+        if test_if_empty.size == 0:#if it's empty!
+            # print('yahoo data cannot be downloaded')
+            continue    # continue here means skipping iteration
+        else:
+            ### delete NAN data from data_close
+            nan_data=numpy.asarray(df_stock_data)
+            nan_data_indx=numpy.argwhere(numpy.isnan(nan_data))
+            nan_data_indx=nan_data_indx.reshape(-1)
+            df_stock_data=df_stock_data.drop(df_stock_data.index[nan_data_indx])
+
+            #cut first two values (one is enough but I add one more just in case there is one more data point that is invalid). sometimes the first value contains an error when data gets pull by Yahoo finance API
+            df_stock_data=df_stock_data[:-2]
+
+            # print(df_stock_data)
+            # check if data is empty after deleting an item in dataframe 
+            test_if_empty = numpy.asarray(df_stock_data)  # converts it to an array if it's not an array.o
+            if test_if_empty.size == 0:#if it's empty!
+                continue    # continue here means skipping iteration
+            else:
+                # extract all data for all dates and find out which contains maximum number of data points ->it gives good indication of how many data points per day trade can be expected
+                count_data_points_each_day=[]
+                index_df_stock_data = df_stock_data.index [::-1]# find most recent day found in list of days, which is closest to today's day.
+                end_day=index_df_stock_data[0].strftime('%Y-%m-%d')
+                date_range=pandas.date_range(sd,end_day,freq='d')
+                if date_range.size == 0:#if it's empty!
+                    continue    # continue here means skipping iteration
+                else:
+                    for xx in date_range:
+                        this_day=xx.strftime('%Y-%m-%d')
+                        try: # i assume that date range covers trading days, but sometimes data is missing or not available.
+                            most_recent_day=df_stock_data.loc[this_day] 
+                        except KeyError:
+                            continue
+                        most_recent_day_numpy_length=len(numpy.asarray(most_recent_day))
+                        count_data_points_each_day=numpy.append(count_data_points_each_day,most_recent_day_numpy_length)
+                    max_count_data_points_each_day=numpy.max(count_data_points_each_day)
+                    # the length of the 1 day data should be at least 40 data points long
+                    if max_count_data_points_each_day>length_above_fourty:
+                        # save stock name
+                        save_stock_name=numpy.append(save_stock_name,x)
+                        #save stock overall status
+                        status_overall_of_particular_stock=status_overall_stocks_append[counter_save_stock_overall_status-1]
+                        save_stock_overall_status=numpy.append(save_stock_overall_status,status_overall_of_particular_stock)
+                        # save stock point data
+                        idx_max_data_points=numpy.where(count_data_points_each_day==max_count_data_points_each_day)[0]
+                        idx_max_data_points=idx_max_data_points[0]
+                        max_date_range=date_range[idx_max_data_points].strftime('%Y-%m-%d')
+                        trading_day_max_data_points=df_stock_data.loc[max_date_range]# get array of daily stock data for this day
+                        trading_day_max_data_points_numpy=numpy.asarray(trading_day_max_data_points)
+
+                        data_point_length=len(trading_day_max_data_points_numpy)
+                        data_point_length_arange=numpy.arange(0,data_point_length, 1, dtype=int)
+                        df_stock_name_model.loc[counter_stock_name_model,data_point_length_arange]=trading_day_max_data_points_numpy
+                        counter_stock_name_model=counter_stock_name_model+1
+
+                        # counter=counter+1
+                        # mpf.plot(df_stock_data,type='line',volume=True)
+                        # break
+
+    df_stock_name_model.index=save_stock_name # setup name of indexes 
+    return df_stock_name_model,save_stock_overall_status
+
+# 2nd Function #
+# 2nd Function is called by another script and used 1st function above to be able to pull out daily data twice. #
+
+def stock_name_and_stock_daily_data_history(filename_csv,general_stock_spreadsheet_names,general_stock_spreadsheet_names_price_fluctuation_noise,to_pick_up_overall_status_price_fluctuation_noise):
+    ### input data ###
+    
+    # Part 1:
+    
+    # filename_csv=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+    # filename_csv1=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us2_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+    # filename_csv2=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us3_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+    # filename_csv3=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us4_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+    # general_stock_spreadsheet_names=['S_Stocks_A_Analyse_Historical_Data_O_output_us1_REPORT_DONOTDELETE','S_Stocks_A_Analyse_Historical_Data_O_output_us2_REPORT_DONOTDELETE',
+                               # 'S_Stocks_A_Analyse_Historical_Data_O_output_us3_REPORT_DONOTDELETE','S_Stocks_A_Analyse_Historical_Data_O_output_us4_REPORT_DONOTDELETE']
+    filename_csv_stock_for_daily_trading=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_name_model_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+
+    # days_to_subtract=7 # 1 week subtracted from today's date
+    delete_this_name='list of young stock'
+    delete_this_name_StOv='StOv'
+    length_above_fourty=38 #initial value=38 # minimum data points per day. i want 40 as the minimum. since I delete the first 2 data points at the beginning, I shorten it to 38.
+    length_number_of_stock=20 # initial value=50 # the minimum number of stock I want to play with on the daily basis should be 50 for now.
+
+    # Part 2:
+    
+    ## input historical data of daily price fluctuation and noise ##
+    # general_stock_spreadsheet_names_price_fluctuation_noise=['us_stock_1_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE','us_stock_2_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE',
+    #                             'us_stock_3_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE','us_stock_4_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE']
+
+    # to_pick_up_overall_status_price_fluctuation_noise=['S_Stocks_A_Analyse_Historical_Data_O_output_us1','S_Stocks_A_Analyse_Historical_Data_O_output_us2',
+    #                             'S_Stocks_A_Analyse_Historical_Data_O_output_us3','S_Stocks_A_Analyse_Historical_Data_O_output_us4']
+
+    length_number_of_stock_price_fluctuation_noise=20 # initial value=50 # the minimum number of stock I want to play with on the daily basis should be 50 for now.
+    stock_price_limit=500 # price limit for each stock. any stock which exceeds price limit will be excluded
+    length_number_of_stock_pricefluctuation_pre=50 # should keep 50 here. That's not the final sorting, only a pre-step.
+    length_number_of_stock_pricefluctuation=20 # now, this is the final step of sorting daily data. It is narrowed down from best 50's to best 20. this number can be changed.
+
+    ### General: ###
+    # to do
+    #- input: needs to read out [1,1,1] for historical data script prior to start running
+    #- export: also use current stock value to determine which one is the highest to be able to spread out money to buy shares evenly. export this value to another script in excel sheet.
+    #- need to add that when this script is done it sets the 1 to 0 in an excel spreadsheet.
+
+    ### function ###
+
+    ### program ###
+
+    ## Part 1: get stock name from historical data using means -short, mid and longterm trends of stock data ##
+    if os.path.exists(filename_csv):
+        read_csv_dataframe=[]
+        saved_stocknames=[]
+        saved_stocknames_append=[]
+        status_overall_stocks=[]
+        status_overall_stocks_append=[]
+        match_index=[]
+        match_index_status_overall=[]
+        df_delete_dublicates=[]
+
+        for x in general_stock_spreadsheet_names:
+            #create csv folder to save dataframe in here
+            read_csv_dataframe=[]
+            filename_csv_loop=filename_csv+'/'+x+'.'+'csv'
+            read_csv_dataframe = pandas.read_csv(filename_csv_loop) # read data from csv.file
+            saved_stocknames = numpy.array(read_csv_dataframe.iloc[1:, 1].values) # stock values from csv.file
+            saved_stocknames_append=numpy.append(saved_stocknames_append,saved_stocknames)
+            match_index=pandas.Series(saved_stocknames_append).str.contains(delete_this_name)# delete 'list of young stock...' cause it is not a stock symbol
+            match_index_numpy=numpy.where(match_index)[0] # if true (there is a match), then index it
+            saved_stocknames_append = numpy.delete(saved_stocknames_append, match_index_numpy)
+            #find dublicates and delete them
+            pandas_find_dublicates = pandas.Series(saved_stocknames_append)
+            pandas_find_dublicates_object=pandas_find_dublicates[pandas_find_dublicates.duplicated()]
+            df_delete_dublicates = pandas.DataFrame(pandas_find_dublicates_object)#convert pandas series to dataframe
+            numpy_array_delete_dublicates_index=numpy.array(df_delete_dublicates.index) # index of dublicates that needs deletion
+            saved_stocknames_append = numpy.delete(saved_stocknames_append, numpy_array_delete_dublicates_index)
+            # saved_stocknames_append_index = numpy.where(saved_stocknames_append == delete_this_name)
+            # get overall results here
+            status_overall_stocks = numpy.array(read_csv_dataframe.iloc[1:, 3].values) # stock values from csv.file
+            status_overall_stocks_append=numpy.append(status_overall_stocks_append,status_overall_stocks)
+            match_index_status_overall=pandas.Series(status_overall_stocks_append).str.contains(delete_this_name_StOv)# delete 'list of young stock...' cause it is not a stock symbol
+            match_index_status_overall_numpy=numpy.where(match_index_status_overall)[0] # if true (there is a match), then index it
+            status_overall_stocks_append = numpy.delete(status_overall_stocks_append, match_index_status_overall_numpy)
+            #delete dublicates- follow-up on above
+            status_overall_stocks_append = numpy.delete(status_overall_stocks_append, numpy_array_delete_dublicates_index)
+
+        df_stock_name_model,save_stock_overall_status=pull_very_recently_daily_data_one_day_length(saved_stocknames_append,status_overall_stocks_append,length_above_fourty)
+
+        # minimum number of stocks is 50. if dataframe exceeds 50 stocks then sort for 50 best.
+
+        save_stock_name=numpy.array(df_stock_name_model.index)
+        length_save_stock_name=len(save_stock_name)
+        if length_save_stock_name>length_number_of_stock:
+            # overall_status_sort=numpy.sort(save_stock_overall_status)[::-1] # sort in descending order
+            # idx_overall_status_sort=numpy.where(save_stock_overall_status==overall_status_sort)[0]# get index of where 
+            save_stock_overall_status=save_stock_overall_status.astype(int) # numbers needs to be put as integers, otherwise 1 digit and multiple digits gets sorted wrong
+            overall_status_sort=numpy.argsort(save_stock_overall_status)[::-1] # sort in descending order # argsort - returns the original indexes of the sorted array
+            #reorder dataframe using array with sorted indexes and adjust length of dataframe to 50 stocks
+            new_order_stock_name=list(save_stock_name[overall_status_sort])
+            # df_stock_name_model=df_stock_name_model.reindex(new_order_stock_name)#reorder dataframe using new order of indexes
+            df_stock_name_model = df_stock_name_model.loc[new_order_stock_name, :]#reorder dataframe using new order of indexes
+            arange_unwanted_series_stocknames=list(numpy.arange(length_number_of_stock,length_save_stock_name,1))
+            df_stock_name_model=df_stock_name_model.drop(df_stock_name_model.index[arange_unwanted_series_stocknames])# delete unwanted rows
+
+        # export data to file directory
+        df_stock_name_model.to_csv(filename_csv_stock_for_daily_trading, sep=',',encoding='utf-8',header='true') # create a csv.file
+        # df_stock_name_model.to_csv(joined_path_csv_data, mode='a', header=False) # it does append new files to existing csv.file
+
+    ## PART 2 is independent of Part 1: get stock name from daily price fluctuation and noise ##
+    # put all stocks in one list, then sort out price limit, then sort after price fluctuation,
+    # then get the best 50, then sort using status overall, get best 20, then append them into spreadsheet.
+    if os.path.exists(filename_csv):
+        read_csv_dataframe=[]
+        saved_stocknames=[]
+        saved_stocknames_pricefluctuation_pricelimit=[]
+        new_order_stock_name=[]
+        arange_unwanted_series_stocknames=[]
+        index_under_price_limit_numpy=[]
+        counter_price_fluctuation_noise=0
+        filename_csv_loop_overall_status=[]
+        read_csv_dataframe_read_overall_status=[]
+        find_fifty_best_stocks=[]
+        all_fifty_best_stocks=[]
+        df_res_all_fifty_stocks=[]
+        saved_stocknames_append=[]
+        status_overall_stocks_append=[]
+        pandas_find_dublicates=[]
+
+        for x in general_stock_spreadsheet_names_price_fluctuation_noise:
+            read_csv_dataframe=[]
+            read_csv_dataframe_read_overall_status=[]
+            counter_price_fluctuation_noise=counter_price_fluctuation_noise+1
+            #create csv folder to save dataframe in here
+            filename_csv_loop=filename_csv+'/'+x+'.'+'csv'
+            read_csv_dataframe = pandas.read_csv(filename_csv_loop) # read data from csv.file
+            # cut out stocks which exceed price stock limits 
+            saved_stocknames = numpy.array(read_csv_dataframe.iloc[1:, 4].values) 
+            index_under_price_limit_numpy=numpy.where(saved_stocknames>stock_price_limit)[0]# which index is above price limit and needs to be deleted
+            # print(saved_stocknames[index_under_price_limit_numpy])
+            if index_under_price_limit_numpy.size != 0:#if it's not empty!
+                read_csv_dataframe=read_csv_dataframe.drop(read_csv_dataframe.index[index_under_price_limit_numpy+1])# delete unwanted rows and +1 is important since dataframe counts from 1 and numpy from 0.
+                new_index=numpy.arange(0,(len(read_csv_dataframe.index)),1)# correct index naming convention
+                read_csv_dataframe.index=new_index
+            saved_stocknames_pricefluctuation = numpy.array(read_csv_dataframe.iloc[1:, 1].values)
+            saved_stocknames_pricefluctuation=saved_stocknames_pricefluctuation.astype(int) # numbers needs to be put as integers, otherwise 1 digit and multiple digits gets sorted wrong
+            pricefluctuation_sort=numpy.argsort(saved_stocknames_pricefluctuation)[::-1] # sort in descending order # argsort - returns the original indexes of the sorted array
+            read_csv_dataframe = read_csv_dataframe.loc[pricefluctuation_sort+1, :]#reorder dataframe using new order of indexes and +1 is important since dataframe counts from 1 and numpy from 0.        stock_names_price_fluctuation=read_csv_dataframe.index
+            length_save_stock_name=len(read_csv_dataframe.index)
+            # only get 50 best, if number is less then it won't delete anything
+            arange_unwanted_series_stocknames=list(numpy.arange(length_number_of_stock_pricefluctuation_pre,length_save_stock_name,1))
+            read_csv_dataframe=read_csv_dataframe.drop(read_csv_dataframe.index[arange_unwanted_series_stocknames])# delete unwanted rows
+            fifty_best_stock_pricefluctuation=read_csv_dataframe=read_csv_dataframe.index
+            # import status overall from another spreasdsheet and then sort stocks - contains same stockname as in variable "x" even though different spreadsheet is used.
+            name_of_spreadsheet_to_get_overall_status=to_pick_up_overall_status_price_fluctuation_noise[counter_price_fluctuation_noise-1] # maybe get error here
+            #create csv folder to save dataframe in here
+            filename_csv_loop_overall_status=filename_csv+'/'+name_of_spreadsheet_to_get_overall_status+'.'+'csv'
+            read_csv_dataframe_read_overall_status = pandas.read_csv(filename_csv_loop_overall_status) # read data from csv.file
+            # find stocks in new spreadsheet and then get overall status
+            find_fifty_best_stocks=read_csv_dataframe_read_overall_status.loc[fifty_best_stock_pricefluctuation]# new array containing 50 stocks
+            #saved_fifty_stocknames_overall_status = numpy.array(find_fifty_best_stocks.iloc[1:, 0].values) # get overall status
+            # append results to array and then create a dataframe
+            all_fifty_best_stocks.append(find_fifty_best_stocks)
+        df_res_all_fifty_stocks = pandas.concat(all_fifty_best_stocks) # add all appends to a dataframe
+        if df_res_all_fifty_stocks.index.size != 0:#if it's not empty!
+            #prepare indexing
+            new_index=numpy.arange(0,(len(df_res_all_fifty_stocks.index)),1)# correct index naming convention
+            df_res_all_fifty_stocks.index=new_index
+            #sort status overall
+            saved_stocknames_pricefluctuation_statusoverall = numpy.array(df_res_all_fifty_stocks.iloc[0:, 1].values) # to get access to status overall
+            saved_stocknames_pricefluctuation_statusoverall=saved_stocknames_pricefluctuation_statusoverall.astype(int) # numbers needs to be put as integers, otherwise 1 digit and multiple digits gets sorted wrong
+            pricefluctuation_statusoverall_sort=numpy.argsort(saved_stocknames_pricefluctuation_statusoverall)[::-1] # sort in descending order # argsort - returns the original indexes of the sorted array
+            # print(pricefluctuation_statusoverall_sort)
+            df_res_all_fifty_stocks = df_res_all_fifty_stocks.loc[pricefluctuation_statusoverall_sort, :]#reorder dataframe using new order of indexes and +1 is important since dataframe counts from 1 and numpy from 0.        stock_names_price_fluctuation=read_csv_dataframe.index
+            # print(df_res_all_fifty_stocks)
+            # narrow down to best 20 stocks. if number is less then it won't delete anything
+            #if len(df_res_all_fifty_stocks.index)>length_number_of_stock_pricefluctuation:
+            #    arange_unwanted_series_stocknames_status_overall=list(numpy.arange(length_number_of_stock_pricefluctuation,(len(df_res_all_fifty_stocks.index)),1))
+            #    df_res_all_fifty_stocks=df_res_all_fifty_stocks.drop(df_res_all_fifty_stocks.index[arange_unwanted_series_stocknames_status_overall])# delete unwanted rows
+            # print(df_res_all_fifty_stocks)        
+            # prepare for export, need to get daily data from each stock first
+            new_index=numpy.arange(0,(len(df_res_all_fifty_stocks.index)),1)# correct index naming convention
+            df_res_all_fifty_stocks.index=new_index
+            saved_stocknames_append=numpy.array(df_res_all_fifty_stocks.iloc[0:, 0].values) # stock names
+            status_overall_stocks_append = numpy.array(df_res_all_fifty_stocks.iloc[0:, 1].values) # to get access to status overall        
+            df_stock_name_model2,save_stock_overall_status=pull_very_recently_daily_data_one_day_length(saved_stocknames_append,status_overall_stocks_append,length_above_fourty)
+            # narrow down to best 20 stocks. if number is less then it won't delete anything
+            if len(df_stock_name_model2.index)>length_number_of_stock_pricefluctuation:
+                arange_unwanted_series_stocknames_status_overall=list(numpy.arange(length_number_of_stock_pricefluctuation,(len(df_stock_name_model2.index)),1))
+                df_stock_name_model2=df_stock_name_model2.drop(df_stock_name_model2.index[arange_unwanted_series_stocknames_status_overall])# delete unwanted rows
+            # print(df_res_all_fifty_stocks)         
+            # append both dfs
+            vertical_appended_df_stock_name_model = pandas.concat([df_stock_name_model, df_stock_name_model2], axis=0)
+            #find and delete dublicates
+            # pandas_find_dublicates = pandas.Series(saved_stocknames_append)
+            pandas_find_dublicates=vertical_appended_df_stock_name_model.index
+            pandas_find_dublicates_object=pandas_find_dublicates[pandas_find_dublicates.duplicated()]
+            df_delete_dublicates = pandas.DataFrame(pandas_find_dublicates_object)#convert pandas series to dataframe
+            list_delete_dublicates_index=list(df_delete_dublicates.index) # index of dublicates that needs deletion
+            # pandas_find_dublicates_numpy_array=numpy.array(pandas_find_dublicates)
+            # pandas_find_dublicates_numpy_array = numpy.delete(pandas_find_dublicates_numpy_array, numpy_array_delete_dublicates_index)
+            vertical_appended_df_stock_name_model=vertical_appended_df_stock_name_model.drop(vertical_appended_df_stock_name_model.index[list_delete_dublicates_index])# delete unwanted rows
+            # export data to file directory
+            vertical_appended_df_stock_name_model.to_csv(filename_csv_stock_for_daily_trading, sep=',',encoding='utf-8',header='true') # create a csv.file 
+
+
+# clear all variables
+#get_ipython().magic('reset -sf')
