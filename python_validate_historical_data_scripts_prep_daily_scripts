@@ -1,0 +1,100 @@
+#!pip install yfinance
+#!pip install mplfinance
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime, timedelta
+import numpy
+import matplotlib.pyplot as plt 
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+import scipy.io
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+import os.path
+from US_Model_Definitions import *
+# avoid printing outout
+from IPython.utils import io
+import time
+
+from Historical_Data_Stockname_Dailydata_Summary_Definition import *
+
+# Input for Part I of script in function: meaning 1st strategy of analysing historical data to prep for model 
+filename_csv=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+# filename_csv1=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us2_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+# filename_csv2=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us3_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+# filename_csv3=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/S_Stocks_A_Analyse_Historical_Data_O_output_us4_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+general_stock_spreadsheet_names=['S_Stocks_A_Analyse_Historical_Data_O_output_us1_REPORT_DONOTDELETE','S_Stocks_A_Analyse_Historical_Data_O_output_us2_REPORT_DONOTDELETE',
+                           'S_Stocks_A_Analyse_Historical_Data_O_output_us3_REPORT_DONOTDELETE','S_Stocks_A_Analyse_Historical_Data_O_output_us4_REPORT_DONOTDELETE']
+
+# Input for Part II of script in function: meaning 2nd strategy of analysing historical data to prep for model 
+general_stock_spreadsheet_names_price_fluctuation_noise=['us_stock_1_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE','us_stock_2_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE',
+                            'us_stock_3_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE','us_stock_4_daily_pricefluctuation_datapoints_REPORT_DONOTDELETE']
+
+to_pick_up_overall_status_price_fluctuation_noise=['S_Stocks_A_Analyse_Historical_Data_O_output_us1','S_Stocks_A_Analyse_Historical_Data_O_output_us2',
+                            'S_Stocks_A_Analyse_Historical_Data_O_output_us3','S_Stocks_A_Analyse_Historical_Data_O_output_us4']
+
+### run while loop, when all zeros turn to ones in txt file, then run function
+# historical data and price fluctuation script all run in task manager. historical data script takes a lot more time than price fluctuation scripts, therefore, only historical scripts will be validated in while loop.
+start = time.time()
+exit_while_loop=0;
+while exit_while_loop==0: # when vaiable is not 0, then exit while loop.
+    # running time
+    stop = time.time()
+    running_time_seconds=int(stop-start)
+    # read from txt file
+    filename_txt=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_historical_function4_interaction.txt');
+    full_dataframe=[]
+    full_dataframe = pandas.read_csv(filename_txt);
+    full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);
+    # currently there are 4 scripts that run through US stocks. Therefore, I need 4 numbers that can turn from 0 to 1. All 4 need to be inspected.
+    idx1 = full_dataframe.iloc[0, 0];
+    idx2 = full_dataframe.iloc[0, 1];
+    idx3 = full_dataframe.iloc[0, 2];
+    idx4 = full_dataframe.iloc[0, 3];
+    #print(buysell,stockname)
+    # primary intervention of while loop -> when historical data scripts are done running, then start below function
+    if idx1==1:
+        if idx2==1:
+            if idx3==1:
+                if idx4==1:
+                    exit_while_loop=1;                
+    full_dataframe=[]
+    # secondary intervention of while loop -> when for whatever reason one of the historical data scripts stops running (error in code), then a timer will initiate function below. 
+    if running_time_seconds>14400: # setup time to 4 hrs. it means: 60secs*60mins*4hrs = 14400 seconds
+        exit_while_loop=1;
+    time.sleep(60*5) # initial 5mins # checks in every seconds -> 60(60secs=1min)*60(60mins=1hr)*8(8hrs)
+
+### run function
+#stock_name_and_stock_daily_data_history(filename_csv,general_stock_spreadsheet_names)
+stock_name_and_stock_daily_data_history(filename_csv,general_stock_spreadsheet_names,general_stock_spreadsheet_names_price_fluctuation_noise,to_pick_up_overall_status_price_fluctuation_noise)
+
+### set all ones to zeros in txt file
+# write to txt file 1
+# set all historical scripts to 0.
+filename_txt=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_historical_function4_interaction.txt');
+full_dataframe=[]
+full_dataframe = pandas.read_csv(filename_txt);
+full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);#delete unnecessary coloumn at the beginning
+full_dataframe.loc[0,'1'] =0; #output of do something -> in txt.file indx and header not indexed. start index is 1 and not 0 for col and row.
+full_dataframe.loc[0,'2'] =0; #output of do something -> in txt.file indx and header not indexed. start index is 1 and not 0 for col and row.
+full_dataframe.loc[0,'3'] =0; #output of do something -> in txt.file indx and header not indexed. start index is 1 and not 0 for col and row.
+full_dataframe.loc[0,'4'] =0; #output of do something -> in txt.file indx and header not indexed. start index is 1 and not 0 for col and row.
+full_dataframe.to_csv(filename_txt, sep=',',encoding='utf-8',header='true');# it does append to existing csv.file
+full_dataframe=[]
+
+# write to txt file 2
+# this one is connected to function 1 and means when 1, then stock data will be checked at website whether stock is available for daily trading.
+filename_txt=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_historical_function1_interaction_1_while_loop.txt');
+full_dataframe=[]
+full_dataframe = pandas.read_csv(filename_txt);
+full_dataframe = full_dataframe.drop(full_dataframe.columns[[0]], axis=1);#delete unnecessary coloumn at the beginning
+full_dataframe.loc[0,'1'] =1; #output of do something -> in txt.file indx and header not indexed. start index is 1 and not 0 for col and row.
+full_dataframe.to_csv(filename_txt, sep=',',encoding='utf-8',header='true');# it does append to existing csv.file
+full_dataframe=[]
+
