@@ -1,0 +1,511 @@
+#!/usr/bin/env python
+# coding: utf-8
+#select row and press ctrl/ to comment and uncomment
+
+#!pip install yfinance
+#!pip install mplfinance
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime
+import numpy
+import matplotlib.pyplot as plt 
+# from pandas import * 
+# change to import pandas and may need to change things in script
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+# import scipy.io # disabled that -> may need to check whether it causes any issues
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+
+from US_Model_Definitions import *
+
+# To- Do List:
+#- input: -import list of stockname and daily data (done- fine adjustment for part I and II sort after short term (5day) results (see file name below), such as 222 on top and 000 at the bottom)
+#                -file name "S_Stocks_A_Analyse_I_Interact_S_Stake_F3_function3_script4_I_interaction_F34_function3and4.ipynb"
+#         -import current stock data when market is open -> primarily use website and secondary use API         
+#- export: also use current stock value to determine which one is the highest to be able to spread out money to buy shares evenly. export this value to another script in excel sheet.
+#- put script as a function and define input variables -> need to create 50 py scripts. each py script stands for a stock that'll be used for daily trading
+#- need to double-check if stock is available on website maybe before running daily trading or while!?
+#- need to add link to website to receive daily stock data 
+
+#function
+#option1 -moving average
+# def smooth_data_lowess(arr):
+#     x = numpy.linspace(0, 1, len(arr))
+#     return sm.nonparametric.lowess(arr, x, frac=0.26, return_sorted=False) #ref frac value is 0.26 or 0.2 and ranges between 0.12-0.3 as per recommendation [0-1]
+
+# def smooth_data_savgol_1(arr):  
+#     return savgol_filter(arr, 10 * 2 + 1, 1) # smooth factor is 10 for spare data SD<0.1,smooth factor is 10 for spare data SD>0.1# there is a correlation between smooth factor 10 and delay time 10 as well
+
+# def moving_average_smooth_lowess(arr): #arr comes in as numpy array 
+#     arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+#     x=numpy.array(arr_dataframe.index)
+#     windowsize = 15 # window size standard is 15
+#     df_test=pandas.DataFrame(data={"y":arr},index=x)
+#     df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+#     data_df_meanmovingwindow=df_test["pandas_moving_average"]
+#     data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+#     return smooth_data_lowess(data_df_meanmovingwindow_array)
+
+# def moving_average_smooth_savol(arr): #arr comes in as numpy array 
+#     arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+#     x=numpy.array(arr_dataframe.index)
+#     windowsize = 30 # window size standard is primarily 30 secondarly 15 and tertiarily 10
+#     df_test=pandas.DataFrame(data={"y":arr},index=x)
+#     df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+#     data_df_meanmovingwindow=df_test["pandas_moving_average"]
+#     data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+#     return smooth_data_savgol_1(data_df_meanmovingwindow_array)
+
+# def moving_average_of_smoothed_savol(arr): #arr comes in as numpy array 
+#     arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+#     x=numpy.array(arr_dataframe.index)
+#     windowsize = 10 #ideal 10 # window size standard is primarily 30 secondarly 15 and tertiarily 10
+#     df_test=pandas.DataFrame(data={"y":arr},index=x)
+#     df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+#     data_df_meanmovingwindow=df_test["pandas_moving_average"]
+#     # data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+#     return numpy.array(data_df_meanmovingwindow)
+
+# def smooth_the_smoothed_savol_uing_savgol_1_again(arr):  
+#     return savgol_filter(arr, 10 * 2 + 1, 1) # smooth factor is 10 for spare data SD<0.1,smooth factor is 10 for spare data SD>0.1# there is a correlation between smooth factor 10 and delay time 10 as well
+
+
+# def getting_extrema(arr):#arr comes in as numpy array 
+#     use_for_extrema=arr
+#     idx_maxima=list(argrelextrema(use_for_extrema, numpy.greater)) # maxima # list[tuple(x,y)] it's a 2d tuple by default
+#     #idx_maxima=list(argrelmax(use_for_extrema))
+#     #peaks, _ = find_peaks(use_for_extrema)
+#     #idx_maxima=list(peaks)
+#     idx_maxima=idx_maxima[0] # to access data from 2d tuple
+#     # for local minima
+#     #idx_minima=argrelextrema(use_for_extrema, numpy.less)#minima
+#     idx_minima=list(argrelmin(use_for_extrema))
+#     idx_minima=idx_minima[0] # to access data from 2d tuple
+#     return idx_maxima,idx_minima #first arg is index of maxima and second arg is index of minima
+
+# def daily_price_fluctuation(arr): #arr comes in as numpy array 
+#     #moving_average
+#     arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+#     x=numpy.array(arr_dataframe.index)
+#     windowsize = 15 # window size standard is 15
+#     df_test=pandas.DataFrame(data={"y":arr},index=x)
+#     df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+#     data_df_meanmovingwindow=df_test["pandas_moving_average"]
+#     data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+#     #group mean of averaged signal
+#     mean_movingaverage=data_df_meanmovingwindow_array.mean(0) #axis=0
+#     #signalamplitude2
+#     return sum(numpy.absolute(data_df_meanmovingwindow_array-mean_movingaverage))/len(data_df_meanmovingwindow_array)
+
+# def daily_stock_noise(arr): #arr comes in as numpy array 
+#     #moving_average
+#     arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+#     x=numpy.array(arr_dataframe.index)
+#     windowsize = 15 # window size standard is 15
+#     df_test=pandas.DataFrame(data={"y":arr},index=x)
+#     df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+#     data_df_meanmovingwindow=df_test["pandas_moving_average"]
+#     data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+#     #signalamplitude2
+#     return sum(numpy.absolute(arr-data_df_meanmovingwindow_array))/len(arr)
+
+# ## Input ##
+
+# filename_csv_stock_for_daily_trading=('C:/Users/USER/AppData/Local/Programs/Python/Python39/Lib/US_stock_spreadsheet/us_stock_name_model_REPORT_DONOTDELETE.csv') # in the clinical version I need to change .../stock.csv to stock_us or stock_etf, etc.
+
+
+#tickers_variable='TSLA'
+
+# #mimic function3 the data of the last 2 days comes in. it seems 1 day data shows best accuracy
+# sd = datetime(2022, 5, 30)#start #2022,3,28
+# ed = datetime(2022, 6, 2)#end  #2022,3,30
+# df_previous = yf.download(tickers=tickers_variable, start=sd, end=ed, interval="1m")
+
+# #pretend daily data comes in per 1 min rate or other
+# sd = datetime(2022, 6, 2)#start #2022,3,30
+# ed = datetime(2022, 6, 3)#end #2022,3,31
+# df_current = yf.download(tickers=tickers_variable, start=sd, end=ed, interval="1m")
+
+# # reference data- all 2 days
+# sd = datetime(2022, 5, 30)#start #2022,3,28
+# ed = datetime(2022, 6, 3)#end #2022,3,31
+# df_reference = yf.download(tickers=tickers_variable, start=sd, end=ed, interval="1m")
+# df_reference_array=numpy.asarray(df_reference.Close[::])
+# mpf.plot(df_reference,type='line',volume=True)#program runs 
+
+## program runs ## 
+
+def model_moving_avg_savol_double_daily_data(saved_stocknames_values_current_stock,df_current):
+    #input requirement:
+    #saved_stocknames_values_current_stock: stock data and stock ticker, dataframe, 1 dimension, can contain nan but doesn't need to, 
+    # df_current: it comes in as a whole data set (dataset is growing as new data comes in-append happens in other script) (daily data current->stock values only),stock data and stock ticker, dataframe, 1 dimension, can contain nan but doesn't need to, 
+    # 
+
+    #TO DO:
+    # change df_previous and tickers_variable to correct input. i don't read from any csv.file. may need to delete if os. ...line.
+    # tab forward and backwards by ctrl+[ and ctrl+]
+    
+    # import list of stockname and daily data -get first ticker and first daily data
+    # read_csv_dataframe=[]
+    # read_csv_dataframe = pandas.read_csv(saved_stocknames_values_current_stock) # read data from csv.file
+    
+    df_previous = saved_stocknames_values_current_stock.iloc[1:] # stock values from csv.file // x should start with 0
+    tickers_variable=saved_stocknames_values_current_stock.iloc[0] # stock name from csv.file // x should start with 0
+
+    # prepare variables
+    # data_close_previous=df_previous.Close[::]
+    data_close_previous=df_previous
+    # data_close=df_current.Close[::]# as an example I use close. should be for all the same
+    data_close=df_current# as an example I use close. should be for all the same
+    length_data=len(data_close)
+    length_data_previous=len(data_close_previous)
+    data_close_array=numpy.asarray(data_close)
+    data_close_previous_array=numpy.asarray(data_close_previous)
+    max_values=[]
+    min_values=[]
+    collect_extrams_idx_max=[]
+    collect_extrams_idx_min=[]
+    idx_min_values_matches=[]
+    idx_max_values_matches=[]
+    save_time_at_extrema_max=[]
+    save_time_at_extrema_min=[]
+    length_of_extrema_vector_max_post=0
+    length_of_extrema_vector_min_post=0
+    counter=0
+    counter_max=0
+    counter_min=0
+    counter_last_variable=0
+    counter_model_extrema=0
+    counter_last_variable_min=0
+    counter_last_variable_max=0
+    counter_ridoff_maxmin_sametime_min_forloop=0
+    #create NAN array to be able to save smoothed data
+    number_rows_for_array=length_data_previous+length_data # get number of elements in list, but string needs to be converted to list first before len() can be determined
+    nan_array = numpy.empty((number_rows_for_array,100,)) # ((row,columns))
+    nan_array[:] = numpy.nan 
+    dataframe_extrema_max=[]
+    dataframe_extrema_min=[]
+    dataframe_first_data=[]
+    dataframe_last_variable=[]
+    min_extrema_idx_last_var_smoothed_data=[]
+    max_extrema_idx_last_var_smoothed_data=[]
+    dataframe_extrema_max= pandas.DataFrame(data=nan_array) # setup dataframe and index equals to name of tests
+    dataframe_extrema_min= pandas.DataFrame(data=nan_array) # setup dataframe and index equals to name of tests
+    dataframe_first_data= pandas.DataFrame(data=nan_array) # setup dataframe and index equals to name of teststaFrame(data=nan_array) # setup dataframe and index equals to name of tests
+    dataframe_last_variable= pandas.DataFrame(data=nan_array) # setup dataframe and index equals to name of teststaFrame(data=nan_array) # setup dataframe and index equals to name of tests
+    first_data_of_smoothed_data=400
+    last_variable_data_ma_sm_pre=[]
+    counter_ridoff_extremas=0
+    numpyarr_last_variable_data_ma_sm=[]
+    save_counter_ridoff_maxmin_sametime_max=[]
+    save_counter_ridoff_maxmin_sametime_min=[]
+    max_var_five_last_dig=[]
+    min_var_five_last_dig=[]
+    min_present=[]
+    max_present=[]
+    min_values_all_pre=[]
+    max_values_all_pre=[]
+    # save_idx_horizontal_line=[]
+    # save_subtraction_result=[]
+
+    # run model using variables above 
+    for xx in range(length_data):
+        current_new_value=data_close_array[xx]
+        # current_new_value=data_close_array
+        data_close_previous_array=numpy.append(data_close_previous_array,current_new_value)
+        data_close_previous_array_length=len(data_close_previous_array)
+        data_close_previous_array_length_arange=numpy.arange(0, data_close_previous_array_length, 1, dtype=int)
+        # data_ma_sm=moving_average_smooth_lowess(data_close_previous_array) ### lowess
+        data_ma_sm=moving_average_smooth_savol(data_close_previous_array) ### savol
+        last_variable_data_ma_sm=data_ma_sm[-1]
+
+        # save last variable of smoothed data
+        numpyarr_last_variable_data_ma_sm=numpy.append(numpyarr_last_variable_data_ma_sm,last_variable_data_ma_sm)
+        # find extrema using last variable of smoothed data
+        if numpy.array(last_variable_data_ma_sm_pre).size > 0:# if not empty
+            # save only first instance of either max or min extrema, but need to find in what direction the signal heading to at first. include random component to be able to remove doubles only first instance need to be saved, may need a third config idea
+
+            # if counter_last_variable==0:
+            #     if last_variable_data_ma_sm<last_variable_data_ma_sm_pre:
+            #         random_variable=1
+            #     else:
+            #         random_variable=0    
+            #     counter_last_variable=1
+
+            #find max extrema, but only the first appearance (random variable) --this part is not done yet. next step is to uncomment #new lines and then fine tune with further restrictions
+            if last_variable_data_ma_sm<last_variable_data_ma_sm_pre:
+                # if min_present==1:
+                    # print(min_present,'max1')#new
+                    # if counter_last_variable_max==0:#new
+                    #     random_variable_max=0   #new
+                    #     counter_last_variable_max=1#new
+                    #need to get 5 data points that fullfils requirement, then save as "extrema last var"
+                max_var_five_last_dig=numpy.append(max_var_five_last_dig,xx) 
+                if numpy.array(max_var_five_last_dig).size == 10: #5 data points would theoretically cut delay into half and will be an optimal result
+                        # print(min_present,random_variable_max,'max2')#new
+                        # if random_variable_max==0:#new
+                    max_extrema_idx_last_var_smoothed_data=numpy.append(max_extrema_idx_last_var_smoothed_data,xx)
+                    max_var_five_last_dig=[]
+                            # random_variable_max=1#new
+                            # random_variable_min=0#new
+                            # print(min_present,random_variable_max,random_variable_min,'max3')#new
+                            # counter_last_variable_min=0 
+
+            #find min extrema, but only the first appearance (random variable)
+            if last_variable_data_ma_sm>last_variable_data_ma_sm_pre:
+                # if max_present==1:
+                    # print(max_present,'min1')#new
+                    # if counter_last_variable_min==0:#new
+                    #     random_variable_min=0   #new
+                    #     counter_last_variable_min=1#new
+                    #need to get 5 data points that fullfils requirement, then save as "extrema last var"
+                min_var_five_last_dig=numpy.append(min_var_five_last_dig,xx) 
+                if numpy.array(min_var_five_last_dig).size == 10: #5 data points would theoretically cut delay into half and will be an optimal result
+                        # print(max_present,random_variable_min,'min2')#new
+                        # if random_variable_min==0:#new
+                    min_extrema_idx_last_var_smoothed_data=numpy.append(min_extrema_idx_last_var_smoothed_data,xx)
+                    min_var_five_last_dig=[]
+                            # random_variable_min=1#new
+                            # random_variable_max=0#new
+                            # print(max_present,random_variable_min,random_variable_max,'min3')#new
+                            # counter_last_variable_max=0
+
+        last_variable_data_ma_sm_pre=last_variable_data_ma_sm
+
+        #save smoothed data
+        if counter <= first_data_of_smoothed_data: # in between 200 <= counter <= 250 # at beginning counter<first_data_of_smoothed_data:
+            dataframe_first_data.loc[counter,data_close_previous_array_length_arange]=data_ma_sm # add real data in here
+        counter=counter+1
+
+        # smoothning smoothed data- smooth out smoothed savol, to be able to get rid off little bumps (little bumps would enable the extrema function to find local min and max which are not there)
+        # data_ma_sm=moving_average_of_smoothed_savol(data_ma_sm)
+
+        data_ma_sm=smooth_the_smoothed_savol_uing_savgol_1_again(data_ma_sm)
+
+        # save all smoothed savol when tail is horizontal- a horizontal tail might leads to find local extremas which aren't there. save location and exclude them from finding extremas
+        # new 07042022
+        # reference_no_nans=data_ma_sm # new 07042022
+        # if xx > 15: # new 07042022
+        #     reference_no_nans = reference_no_nans[~numpy.isnan(reference_no_nans)] # remove nans # new 07042022
+        #     no_nan_subtraction=reference_no_nans[-10:] # use last 10 elements to find that represents the tail the best # new 07042022
+        #     no_nan_subtraction_result = abs(no_nan_subtraction[0] - no_nan_subtraction[-1] ) # subtract first and last value- the closer to zero, the closer it is to be a horizontal line # new 07042022
+        #     save_subtraction_result=numpy.append(save_subtraction_result,no_nan_subtraction_result) # new 07042022      
+        #     idx_min_subtraction_result=list(argrelmin(save_subtraction_result)) # new 07042022 
+        #     idx_subtraction_result=idx_min_subtraction_result[0] # new 07042022 
+        #     if numpy.array(idx_subtraction_result).size > 0:# if not empty # new 07042022 
+        #         save_idx_horizontal_line=numpy.append(save_idx_horizontal_line,data_close_previous_array_length-1)# the previous index was the lowest and that needs to be saved # new 07042022      
+        #         save_subtraction_result=[] # new 07042022 
+
+        #get maxima and minima from smoothed data
+        idx_max,idx_min=getting_extrema(data_ma_sm)
+        max_values = numpy.where(idx_max >= (length_data_previous-1))[0]
+        min_values = numpy.where(idx_min >= (length_data_previous-1))[0]
+        #print(idx_max[max_values],'max',idx_min[min_values],'min')
+        # length_data_previous=len(data_close_previous_array)
+
+        #add buy/sell at very beginning if extrema has not found anything yet. look at model after 15 data points up/down trending decide buy/sell by looking at first 10 or data points of 15.
+        # if xx == 15:# the delay between finding an extrema and current data point is ~10 for us stocks, therefore 15 seems to be a good measure where is the first part the smoothed data should be stable and not move around too much. maybe a bigger number such as 20 is better suitable.   
+        #     if numpy.array(max_values).size == 0: #if it is empty
+        #         if numpy.array(min_values).size == 0: #if it is empty
+        #             array_firstcouple_datapoints=numpy.array(dataframe_first_data.iloc[10,length_data_previous-1:])
+        #             first_array_firstcouple_datapoints=array_firstcouple_datapoints[0]
+        #             last_array_firstcouple_datapoints=array_firstcouple_datapoints[10]
+        #             print(first_array_firstcouple_datapoints,last_array_firstcouple_datapoints)
+        #             if first_array_firstcouple_datapoints>last_array_firstcouple_datapoints:
+        #                 collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,data_close_previous_array_length)
+        #                 save_counter_ridoff_maxmin_sametime_max=numpy.append(save_counter_ridoff_maxmin_sametime_max,data_close_previous_array_length)
+        #                 random_variable_model=0
+        #                 max_present=1# 1 for yes and 0 for no
+        #                 counter_model_extrema=1
+        #                 indx_values_all_pre=data_close_previous_array_length
+        #                 save_time_at_extrema_max=numpy.append(save_time_at_extrema_max,xx)
+        #             else:
+        #                 collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,data_close_previous_array_length)
+        #                 save_counter_ridoff_maxmin_sametime_min=numpy.append(save_counter_ridoff_maxmin_sametime_min,data_close_previous_array_length)
+        #                 random_variable_model=1
+        #                 min_present=1# 1 for yes and 0 for no
+        #                 counter_model_extrema=1
+        #                 indx_values_all_pre=data_close_previous_array_length
+        #                 save_time_at_extrema_min=numpy.append(save_time_at_extrema_min,xx)
+        #save maxima
+        if numpy.array(max_values).size > 0:# if not empty
+                max_values_all=idx_max[max_values]
+                if numpy.array(collect_extrams_idx_max).size > 0:# if not empty
+                    if numpy.array(max_values_all).size > 0:# if not empty
+                        idx_max_values_matches=numpy.nonzero(collect_extrams_idx_max[:,None] == max_values_all)[1] # in case max values has been appended in collect_extrams_idx_max those shouldn't be included in collect_extrams_idx_max again, others should be appended 
+                        if numpy.array(idx_max_values_matches).size > 0:# if not empty
+                            max_values_all=numpy.delete(max_values_all, idx_max_values_matches)
+                            if numpy.array(max_values_all).size > 1:# if not empty
+                                max_values_all=max_values_all[-1]
+                #only save first occurence of maxima, then minima follows and so one. any doubles will be ignored.
+
+                if counter_model_extrema==0:
+                    collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,numpy.max(max_values_all))
+                    save_counter_ridoff_maxmin_sametime_max=numpy.append(save_counter_ridoff_maxmin_sametime_max,counter)
+                    random_variable_model=0
+                    max_present=1# 1 for yes and 0 for no
+                    counter_model_extrema=1
+                    indx_values_all_pre=numpy.max(max_values_all)
+                    # print(counter,'countermodelextrema_max')
+                if random_variable_model==1:
+                    if min_present==1:
+                        if numpy.array(max_values_all).size > 0:
+                            #to get rid off extremas (indexes) which are smaller than previous due to model reanalysis data and there is always a small deviation each time it goes through the data. deviation is produced by model adopting to new data. small changes of model changes extrema indexes slightly as well.
+                            if numpy.max(max_values_all)>numpy.array(indx_values_all_pre):
+                                # if numpy.array(save_idx_horizontal_line).size > 0: #if not empty # new 07042022
+                                #     extrema_found_at_horizontal_line=[] # new 07042022
+                                #     max_values_all_pre=numpy.max(max_values_all) # assumption max_values_all_pre is always 1 element # new 07042022
+                                #     extrema_found_at_horizontal_line=numpy.where(save_idx_horizontal_line == max_values_all_pre) # new 07042022
+                                #     print(extrema_found_at_horizontal_line,save_idx_horizontal_line,max_values_all_pre)
+                                #     if numpy.array(extrema_found_at_horizontal_line).size == 0:#if it is empty # new 07042022
+                                #         collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,numpy.max(max_values_all)) # new 07042022
+                                #         save_counter_ridoff_maxmin_sametime_max=numpy.append(save_counter_ridoff_maxmin_sametime_max,counter) # new 07042022
+                                #         random_variable_model=0 # new 07042022
+                                #         min_present=0 # new 07042022
+                                #         max_present=1 # new 07042022
+                                #         if max_values_all_pre>indx_values_all_pre: # new 07042022
+                                #             indx_values_all_pre=max_values_all_pre # new 07042022
+                                # else: # new 07042022
+                                max_values_all_pre=numpy.max(max_values_all)
+                                collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,numpy.max(max_values_all))
+                                save_counter_ridoff_maxmin_sametime_max=numpy.append(save_counter_ridoff_maxmin_sametime_max,counter)
+                                random_variable_model=0
+                                min_present=0
+                                max_present=1
+                                if max_values_all_pre>indx_values_all_pre:
+                                    indx_values_all_pre=max_values_all_pre
+                    # print(collect_extrams_idx_max,max_values_all,random_variable_model,max_values_all_pre,counter_max,counter,counter_model_extrema,indx_values_all_pre,'max')
+
+                # collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,max_values_all)
+
+                # save time and smoothed data (at the time of finding extrema)
+                if numpy.array(collect_extrams_idx_max).size > 0:# if not empty
+                        length_of_extrema_vector_max=len(collect_extrams_idx_max)
+                        if length_of_extrema_vector_max>length_of_extrema_vector_max_post:
+                            #save time (or length_data) for comparison
+                            save_time_at_extrema_max=numpy.append(save_time_at_extrema_max,xx)
+                            length_of_extrema_vector_max_post=length_of_extrema_vector_max
+                            # save all smoothed data when extrema is found
+                            dataframe_extrema_max.loc[counter_max,data_close_previous_array_length_arange]=data_ma_sm # add real data in here
+                            counter_max=counter_max+1
+                            #print(data_ma_sm,'max smoothed data')
+        #save minimas 
+        if numpy.array(min_values).size > 0:
+                min_values_all=idx_min[min_values]
+                if numpy.array(collect_extrams_idx_min).size > 0:# if not empty
+                    if numpy.array(min_values_all).size > 0:# if not empty
+                        idx_min_values_matches=numpy.nonzero(collect_extrams_idx_min[:,None] == min_values_all)[1]
+                        if numpy.array(idx_min_values_matches).size > 0:# if not empty
+                            min_values_all=numpy.delete(min_values_all, idx_min_values_matches)
+                            if numpy.array(min_values_all).size > 1:# if not empty
+                                min_values_all=min_values_all[-1]
+                #only save first occurence of minima, then minima follows and so one. any doubles will be ignored.
+
+                if counter_model_extrema==0:
+                    collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,numpy.max(min_values_all))
+                    save_counter_ridoff_maxmin_sametime_min=numpy.append(save_counter_ridoff_maxmin_sametime_min,counter)
+                    random_variable_model=1
+                    min_present=1# 1 for yes and 0 for no
+                    counter_model_extrema=1
+                    indx_values_all_pre=numpy.max(min_values_all)
+                    # print(counter,'countermodelextrema_min')
+                if random_variable_model==0:
+                    if max_present==1:
+                        if numpy.array(min_values_all).size > 0:
+                            #to get rid off extremas (indexes) which are smaller than previous due to model reanalysis data and there is always a small deviation each time it goes through the data. deviation is produced by model adopting to new data. small changes of model changes extrema indexes slightly as well.
+                            if numpy.max(min_values_all)>numpy.array(indx_values_all_pre):
+                                # if numpy.array(save_idx_horizontal_line).size > 0: #if not empty # new 07042022
+                                #     extrema_found_at_horizontal_line=[] # new 07042022
+                                #     min_values_all_pre=numpy.max(min_values_all) # assumption max_values_all_pre is always 1 element # new 07042022
+                                #     extrema_found_at_horizontal_line=numpy.where(save_idx_horizontal_line == min_values_all_pre) # new 07042022
+                                #     if numpy.array(extrema_found_at_horizontal_line).size == 0:#if it is empty # new 07042022
+                                #         collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,numpy.max(min_values_all))# new 07042022
+                                #         save_counter_ridoff_maxmin_sametime_min=numpy.append(save_counter_ridoff_maxmin_sametime_min,counter)# new 07042022
+                                #         random_variable_model=1# new 07042022
+                                #         min_present=1# new 07042022
+                                #         max_present=0# new 07042022
+                                #         if min_values_all_pre>indx_values_all_pre:# new 07042022
+                                #             indx_values_all_pre=min_values_all_pre# new 07042022
+                                # else: #new 07042022
+                                min_values_all_pre=numpy.max(min_values_all)
+                                collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,numpy.max(min_values_all))
+                                save_counter_ridoff_maxmin_sametime_min=numpy.append(save_counter_ridoff_maxmin_sametime_min,counter)
+                                random_variable_model=1
+                                min_present=1
+                                max_present=0
+                                if min_values_all_pre>indx_values_all_pre:
+                                    indx_values_all_pre=min_values_all_pre
+                    # print(collect_extrams_idx_min,min_values_all,random_variable_model,min_values_all_pre,counter_min,counter,counter_model_extrema,indx_values_all_pre,'min')
+                # extrema finds max and min at same smoothed model (only 1 max or min can be found per smoothed model or per input data)
+                if numpy.array(collect_extrams_idx_max).size and numpy.array(collect_extrams_idx_min).size > 0:# if not empty> 0:# if not empty
+                    for zz in save_counter_ridoff_maxmin_sametime_min:
+                        indx_match_counter_maxmin=numpy.where(save_counter_ridoff_maxmin_sametime_max==zz)
+                        if numpy.array(indx_match_counter_maxmin).size>0:
+                            value_max_save_counter=save_counter_ridoff_maxmin_sametime_max[indx_match_counter_maxmin]
+                            idx_min_save_counter=numpy.where(save_counter_ridoff_maxmin_sametime_min==value_max_save_counter)
+                            collect_extrams_idx_max=numpy.delete(collect_extrams_idx_max, indx_match_counter_maxmin) # delete extrema that encounter on same smoothed model 
+                            collect_extrams_idx_min=numpy.delete(collect_extrams_idx_min, idx_min_save_counter) # delete extrema that encounter on same smoothed model 
+                            save_counter_ridoff_maxmin_sametime_min=numpy.delete(save_counter_ridoff_maxmin_sametime_min, idx_min_save_counter) # delete extrema that encounter on same smoothed model
+                            save_counter_ridoff_maxmin_sametime_max=numpy.delete(save_counter_ridoff_maxmin_sametime_max, indx_match_counter_maxmin) # delete extrema that encounter on same smoothed model
+                            # max_values_all_pre=max_values_all_pre-10 #i assume 10 steps back equals to 10 data points to be a good start but needs more investigation #when smoothed model goes horizontal, extrema model finds min and max at same time. after correcting for it, i need to adjust the index back a little to allow to find the correct extrema as soon as the smoothed model adopted to stock signal in the next step (smoothed model is not horizontal anymore)
+                            # min_values_all_pre=min_values_all_pre-10 #i assume 10 steps back equals to 10 data points to be a good start but needs more investigation #when smoothed model goes horizontal, extrema model finds min and max at same time. after correcting for it, i need to adjust the index back a little to allow to find the correct extrema as soon as the smoothed model adopted to stock signal in the next step (smoothed model is not horizontal anymore)
+                            indx_values_all_pre=indx_values_all_pre-10#i assume 10 steps back equals to 10 data points to be a good start but needs more investigation #when smoothed model goes horizontal, extrema model finds min and max at same time. after correcting for it, i need to adjust the index back a little to allow to find the correct extrema as soon as the smoothed model adopted to stock signal in the next step (smoothed model is not horizontal anymore)
+
+                # collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,min_values_all)
+
+                # save time and smoothed data (at the time of finding extrema)
+                if numpy.array(collect_extrams_idx_min).size > 0:# if not empty
+                        length_of_extrema_vector_min=len(collect_extrams_idx_min)
+                        if length_of_extrema_vector_min>length_of_extrema_vector_min_post:
+                            #save time (or length_data) for comparison
+                            save_time_at_extrema_min=numpy.append(save_time_at_extrema_min,xx)
+                            length_of_extrema_vector_min_post=length_of_extrema_vector_min
+                            # save all smoothed data when extrema is found
+                            dataframe_extrema_min.loc[counter_min,data_close_previous_array_length_arange]=data_ma_sm # add real data in here
+                            counter_min=counter_min+1
+                            # print(data_ma_sm,'min smoothed data')
+
+        #add buy/sell at very beginning if extrema has not found anything yet. look at model after 15 data points up/down trending decide buy/sell by looking at first 10 or data points of 15.
+        if xx == 15:# the delay between finding an extrema and current data point is ~10 for us stocks, therefore 15 seems to be a good measure where is the first part the smoothed data should be stable and not move around too much. maybe a bigger number such as 20 is better suitable.   
+            if numpy.array(max_values).size == 0: #if it is empty
+                if numpy.array(min_values).size == 0: #if it is empty
+                    array_firstcouple_datapoints=numpy.array(dataframe_first_data.iloc[10,length_data_previous-1:])
+                    # first_array_firstcouple_datapoints=array_firstcouple_datapoints[0]
+                    first_array_firstcouple_datapoints=current_new_value
+                    last_array_firstcouple_datapoints=array_firstcouple_datapoints[10]
+                    # print(first_array_firstcouple_datapoints,last_array_firstcouple_datapoints,array_firstcouple_datapoints[-1])
+                    if first_array_firstcouple_datapoints>last_array_firstcouple_datapoints:
+                        collect_extrams_idx_max=numpy.append(collect_extrams_idx_max,data_close_previous_array_length)
+                        save_counter_ridoff_maxmin_sametime_max=numpy.append(save_counter_ridoff_maxmin_sametime_max,data_close_previous_array_length)
+                        random_variable_model=0
+                        max_present=1# 1 for yes and 0 for no
+                        counter_model_extrema=1
+                        indx_values_all_pre=length_data_previous #data_close_previous_array_length
+                        save_time_at_extrema_max=numpy.append(save_time_at_extrema_max,xx)
+                    else:
+                        collect_extrams_idx_min=numpy.append(collect_extrams_idx_min,data_close_previous_array_length)
+                        save_counter_ridoff_maxmin_sametime_min=numpy.append(save_counter_ridoff_maxmin_sametime_min,data_close_previous_array_length)
+                        random_variable_model=1
+                        min_present=1# 1 for yes and 0 for no
+                        counter_model_extrema=1
+                        indx_values_all_pre=length_data_previous #data_close_previous_array_length
+                        save_time_at_extrema_min=numpy.append(save_time_at_extrema_min,xx)
+
+    # output
+    # print(collect_extrams_idx_max,'max',collect_extrams_idx_min,'min') # index of max and min. it is roughly 10 data points behind of current time when extrema max or min is found.
+    # print(save_time_at_extrema_max) # current time extrema max found
+    # print(save_time_at_extrema_min) # current time extrema min found
+
+    return save_time_at_extrema_max,save_time_at_extrema_min,collect_extrams_idx_max,collect_extrams_idx_min,counter-1 #counter-1 aligns well with time at extrema min and max 
+
+# print("python code is finished")
+
+# clear all variables
+#get_ipython().magic('reset -sf')
