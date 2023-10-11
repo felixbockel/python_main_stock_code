@@ -1,0 +1,103 @@
+#!pip install yfinance
+#!pip install mplfinance
+
+# python all definitions to run statistical models for model script
+
+import yfinance as yf
+import mplfinance as mpf
+from datetime import datetime
+import numpy
+import matplotlib.pyplot as plt 
+#from pandas import *
+import pandas
+from scipy.signal import argrelextrema
+import statsmodels.api as sm
+from statsmodels.nonparametric.kernel_regression import KernelReg
+from statsmodels.nonparametric._kernel_base import EstimatorSettings
+from scipy.signal import savgol_filter
+import scipy.fftpack
+#import scipy.io
+from scipy.signal import argrelmax
+from scipy.signal import argrelmin
+from scipy.signal import find_peaks
+#function
+#option1 -moving average
+def smooth_data_lowess(arr):
+    x = numpy.linspace(0, 1, len(arr))
+    return sm.nonparametric.lowess(arr, x, frac=0.26, return_sorted=False) #ref frac value is 0.26 or 0.2 and ranges between 0.12-0.3 as per recommendation [0-1]
+
+def smooth_data_savgol_1(arr):  
+    return savgol_filter(arr, 10 * 2 + 1, 1) # smooth factor is 10 for spare data SD<0.1,smooth factor is 10 for spare data SD>0.1# there is a correlation between smooth factor 10 and delay time 10 as well
+
+def moving_average_smooth_lowess(arr): #arr comes in as numpy array 
+    arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+    x=numpy.array(arr_dataframe.index)
+    windowsize = 15 # window size standard is 15
+    df_test=pandas.DataFrame(data={"y":arr},index=x)
+    df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+    data_df_meanmovingwindow=df_test["pandas_moving_average"]
+    data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+    return smooth_data_lowess(data_df_meanmovingwindow_array)
+
+def moving_average_smooth_savol(arr): #arr comes in as numpy array 
+    arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+    x=numpy.array(arr_dataframe.index)
+    windowsize = 30 # window size standard is primarily 30 secondarly 15 and tertiarily 10
+    df_test=pandas.DataFrame(data={"y":arr},index=x)
+    df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+    data_df_meanmovingwindow=df_test["pandas_moving_average"]
+    data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+    return smooth_data_savgol_1(data_df_meanmovingwindow_array)
+
+def moving_average_of_smoothed_savol(arr): #arr comes in as numpy array 
+    arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+    x=numpy.array(arr_dataframe.index)
+    windowsize = 10 #ideal 10 # window size standard is primarily 30 secondarly 15 and tertiarily 10
+    df_test=pandas.DataFrame(data={"y":arr},index=x)
+    df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+    data_df_meanmovingwindow=df_test["pandas_moving_average"]
+    # data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+    return numpy.array(data_df_meanmovingwindow)
+
+def smooth_the_smoothed_savol_uing_savgol_1_again(arr):  
+    return savgol_filter(arr, 10 * 2 + 1, 1) # smooth factor is 10 for spare data SD<0.1,smooth factor is 10 for spare data SD>0.1# there is a correlation between smooth factor 10 and delay time 10 as well
+
+
+def getting_extrema(arr):#arr comes in as numpy array 
+    use_for_extrema=arr
+    idx_maxima=list(argrelextrema(use_for_extrema, numpy.greater)) # maxima # list[tuple(x,y)] it's a 2d tuple by default
+    #idx_maxima=list(argrelmax(use_for_extrema))
+    #peaks, _ = find_peaks(use_for_extrema)
+    #idx_maxima=list(peaks)
+    idx_maxima=idx_maxima[0] # to access data from 2d tuple
+    # for local minima
+    #idx_minima=argrelextrema(use_for_extrema, numpy.less)#minima
+    idx_minima=list(argrelmin(use_for_extrema))
+    idx_minima=idx_minima[0] # to access data from 2d tuple
+    return idx_maxima,idx_minima #first arg is index of maxima and second arg is index of minima
+
+def daily_price_fluctuation(arr): #arr comes in as numpy array 
+    #moving_average
+    arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+    x=numpy.array(arr_dataframe.index)
+    windowsize = 15 # window size standard is 15
+    df_test=pandas.DataFrame(data={"y":arr},index=x)
+    df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+    data_df_meanmovingwindow=df_test["pandas_moving_average"]
+    data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+    #group mean of averaged signal
+    mean_movingaverage=data_df_meanmovingwindow_array.mean(0) #axis=0
+    #signalamplitude2
+    return sum(numpy.absolute(data_df_meanmovingwindow_array-mean_movingaverage))/len(data_df_meanmovingwindow_array)
+
+def daily_stock_noise(arr): #arr comes in as numpy array 
+    #moving_average
+    arr_dataframe=pandas.DataFrame(data=arr) # due to boundary effects, it cuts off edges. not good for stock analysis
+    x=numpy.array(arr_dataframe.index)
+    windowsize = 15 # window size standard is 15
+    df_test=pandas.DataFrame(data={"y":arr},index=x)
+    df_test["pandas_moving_average"]=df_test["y"].rolling(window=windowsize,center=True,min_periods=1).mean()
+    data_df_meanmovingwindow=df_test["pandas_moving_average"]
+    data_df_meanmovingwindow_array=numpy.array(data_df_meanmovingwindow)
+    #signalamplitude2
+    return sum(numpy.absolute(arr-data_df_meanmovingwindow_array))/len(arr)
