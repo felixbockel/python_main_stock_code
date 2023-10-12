@@ -1,8 +1,12 @@
 # python_main_stock_code
+
 ## Aim: 
+
 ### 1) Analyse historical data for the last 5 years from tickers US, Australia, ETFs and more. If tickers are no older than a year, will be neglected.
 ### 2) Select the most fitting tickers in terms of uptrending and reasonable low random variation for daily trading
-### 3) interact with website to extract raw data and place bits such as buy or sell
+### 3) interact with website to extract raw data and action buy or sell
+
+## Code:
 
 1) first script is python_extract_tickers: webscraping to get tickers from yahoo webpage
 2) second are scripts that defines historical and price fluctuation and price data named python_historical_data_definition and python_price_fluctuation_noise_definition
