@@ -2,7 +2,7 @@
 
 ## Aim: 
 
-### 1) Analyse historical data for the last 5 years from tickers US, Australia, ETFs and more. If tickers are no older than a year, will be neglected.
+### 1) Analyse historical data for the last 5 years from tickers that encompasses US, Australia, ETFs, Mutualfunds, Crypto, Commodities, Global Indicies.
 ### 2) Select the most fitting tickers in terms of uptrending and reasonable low random variation for daily trading
 ### 3) interact with website to extract raw data and action buy or sell
 
