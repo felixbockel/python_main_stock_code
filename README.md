@@ -3,7 +3,7 @@
 ## Aim: 
 
 ### 1) Analyse historical data for the last 5 years from tickers that encompasses US, Australia, ETFs, Mutualfunds, Crypto, Commodities, Global Indicies.
-### 2) Select the most fitting tickers for daily trading in terms of whether they are uptrending and have a reasonable low random variation 
+### 2) Select the most fitting tickers for daily trading in terms of whether or not they are uptrending and have a reasonable low random variation 
 ### 3) interact with website to extract raw data and action buy or sell
 
 ## Code:
